@@ -14,3 +14,6 @@
     "react-native": "0.79.2"
   }
 }
+"android": {
+  "package": "com.mara.ryp"
+}

@@ -1,10 +1,11 @@
 {
   "expo": {
-    "name": "Rýp",
-    "slug": "ryp",
+    "name": "Mára & Rýp AI",
+    "slug": "ryp-ai",
     "version": "1.0.0",
+    "orientation": "portrait",
     "android": {
-      "package": "com.mara.ryp"
+      "package": "com.mara.rypai"
     }
   }
 }

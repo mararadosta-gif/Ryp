@@ -1,0 +1,10 @@
+{
+  "expo": {
+    "name": "Rýp",
+    "slug": "ryp",
+    "version": "1.0.0",
+    "android": {
+      "package": "com.mara.ryp"
+    }
+  }
+}

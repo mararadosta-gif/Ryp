@@ -7,10 +7,4 @@
     "android": {
       "package": "com.mara.rypai"
     },
-    "extra": {
-      "eas": {
-        "projectId": ""
-      }
-    }
-  }
-}
+    

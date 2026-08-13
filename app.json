@@ -6,5 +6,6 @@
     "orientation": "portrait",
     "android": {
       "package": "com.mara.rypai"
-    },
     }
+  }
+}

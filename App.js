@@ -3,6 +3,7 @@ import {
   SafeAreaView,
   View,
   Text,
+  Image,
   TextInput,
   TouchableOpacity,
   FlatList,
@@ -98,6 +99,12 @@ export default function App() {
 
   return (
     <SafeAreaView style={styles.container}>
+
+      <Image
+        source={require("./assets/ryp-avatar.png")}
+        style={styles.avatar}
+      />
+
       <Text style={styles.title}>Rýp</Text>
 
       <Text style={styles.subtitle}>
@@ -146,12 +153,20 @@ const styles = StyleSheet.create({
     backgroundColor: "#111111",
   },
 
+  avatar: {
+    width: 90,
+    height: 90,
+    borderRadius: 45,
+    alignSelf: "center",
+    marginTop: 10,
+  },
+
   title: {
     color: "#b7d900",
     fontSize: 38,
     fontWeight: "bold",
     textAlign: "center",
-    marginTop: 20,
+    marginTop: 5,
   },
 
   subtitle: {

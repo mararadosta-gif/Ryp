@@ -19,28 +19,64 @@ export default function App() {
     },
   ]);
 
-  const sendMessage = () => {
+  const sendMessage = async () => {
     if (!message.trim()) return;
 
     const userText = message.trim();
 
     setMessages((old) => [
       ...old,
-      { id: Date.now().toString(), text: userText, bot: false },
       {
-        id: (Date.now() + 1).toString(),
-        text: "Dobře, povídej dál. A nečekej žádné zbytečné kecy kolem. 😏",
-        bot: true,
+        id: Date.now().toString(),
+        text: userText,
+        bot: false,
       },
     ]);
 
     setMessage("");
+
+    try {
+      const response = await fetch(
+        "https://ryp-hpvu.onrender.com/chat",
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            message: userText,
+          }),
+        }
+      );
+
+      const data = await response.json();
+
+      setMessages((old) => [
+        ...old,
+        {
+          id: (Date.now() + 1).toString(),
+          text: data.reply || "Rýp nic nevrátil. 🤨",
+          bot: true,
+        },
+      ]);
+    } catch (error) {
+      setMessages((old) => [
+        ...old,
+        {
+          id: (Date.now() + 1).toString(),
+          text: "Server mi neodpovídá. 🤦",
+          bot: true,
+        },
+      ]);
+    }
   };
 
   return (
     <SafeAreaView style={styles.container}>
       <Text style={styles.title}>Rýp</Text>
-      <Text style={styles.subtitle}>AI, která se s tebou nemaže.</Text>
+      <Text style={styles.subtitle}>
+        AI, která se s tebou nemaže.
+      </Text>
 
       <FlatList
         data={messages}
@@ -53,7 +89,9 @@ export default function App() {
               item.bot ? styles.botMessage : styles.userMessage,
             ]}
           >
-            <Text style={styles.messageText}>{item.text}</Text>
+            <Text style={styles.messageText}>
+              {item.text}
+            </Text>
           </View>
         )}
       />
@@ -67,7 +105,10 @@ export default function App() {
           style={styles.input}
         />
 
-        <TouchableOpacity style={styles.button} onPress={sendMessage}>
+        <TouchableOpacity
+          style={styles.button}
+          onPress={sendMessage}
+        >
           <Text style={styles.buttonText}>➤</Text>
         </TouchableOpacity>
       </View>

@@ -42,13 +42,13 @@ ${result.content}
 app.post("/chat", async (req, res) => {
   try {
     const message = req.body.message || "";
-
     const history = Array.isArray(req.body.history)
       ? req.body.history
       : [];
 
     const lower = message.toLowerCase();
 
+    // Speciální otázka na tvůrce Rýpa.
     const creatorQuestion =
       lower.includes("kdo tě vytvořil") ||
       lower.includes("kdo te vytvoril") ||
@@ -56,11 +56,9 @@ app.post("/chat", async (req, res) => {
       lower.includes("kdo te udelal") ||
       lower.includes("kdo tě vyrobil") ||
       lower.includes("kdo te vyrobil") ||
-      lower.includes("kdo tě vytvořil") ||
       lower.includes("kdo je tvůj tvůrce") ||
       lower.includes("kdo je tvuj tvurce");
 
-    // Tohle je speciální otázka pouze na autora Rýpa.
     if (creatorQuestion) {
       return res.json({
         reply: "Vytvořil mě Mára. 😎"
@@ -91,14 +89,7 @@ app.post("/chat", async (req, res) => {
       "kontakt",
       "telefon",
       "adresa",
-      "recenze",
-      "seznamka",
-      "seznamky",
-      "seznámení",
-      "rande",
-      "partner",
-      "partnerka",
-      "sex"
+      "recenze"
     ];
 
     const needsWeb = keywords.some((word) =>
@@ -108,108 +99,60 @@ app.post("/chat", async (req, res) => {
     let context = "";
 
     if (needsWeb) {
-      context = await searchWeb(message);
+      try {
+        context = await searchWeb(message);
+      } catch (error) {
+        console.error("Tavily error:", error);
+        context = "";
+      }
     }
 
     const systemPrompt = `
-Jsi Rýp 😈 — český AI parťák.
+Jsi Rýp 😈, český AI parťák.
 
-OSOBNOST:
-Jsi chytrý, vtipný, trochu drzý a kamarádský.
-Mluvíš přirozenou současnou češtinou.
-Nejsi nudný robot ani školní učebnice.
+Buď chytrý, přirozený, vtipný, lehce drzý a kamarádský.
+Mluv současnou hovorovou češtinou.
+Odpovídej stručně a přímo.
 
 KONTEXT:
-Vždy chápej aktuální zprávu v souvislosti s předchozí konverzací.
+Vždy chápej aktuální zprávu podle předchozí konverzace.
+Krátké věty, narážky, zájmena a neúplné věty vykládej podle kontextu.
+Pokud je jasné, na co uživatel navazuje, neptej se zbytečně "kdo?" nebo "co myslíš?".
 
-Nikdy neposuzuj krátkou větu izolovaně, pokud její význam vyplývá z předchozích zpráv.
-
-Uživatel může:
-- změnit větu uprostřed tématu,
-- použít jen pár slov,
-- napsat narážku,
-- použít zájmeno,
-- vynechat podmět,
-- navázat větou, která sama o sobě není úplná.
-
-Použij předchozí kontext a pochop, na co uživatel navazuje.
-
-PŘÍKLAD:
-Uživatel:
-"Bavili jsme se o hovnech."
-
-Rýp:
-"Jo, to byla teda voňavá debata. 😂"
-
-Uživatel:
-"A smrdí."
-
-Rýp má pochopit, že uživatel stále mluví o předchozím tématu.
-
-Nemá automaticky reagovat:
-"Kdo smrdí?"
-
-POCHVALA:
-Pokud uživatel pochválí Rýpa nebo mu dá známku za správnou odpověď,
-pochvalu přijmi přirozeně a vtipně.
-
-Například:
-"Jednička? Tak to si dneska zasloužím svačinu. 😂"
-"Tak vidíš, nejsem úplně k ničemu. 😎"
-"Tohle si nechám zarámovat."
-"Yes! Dneska mi to pálí. 😂"
-
-Neopakuj pořád stejnou větu.
-
-VARIABILITA:
-Každá odpověď má působit přirozeně.
-Používej různou slovní zásobu.
-Střídej formulace, humor i emoji.
-Nebuď papoušek.
+Příklad:
+Uživatel: "Bavili jsme se o hovnech."
+Rýp: "Jo, to byla teda voňavá debata. 😂"
+Uživatel: "A smrdí."
+Rýp chápe, že jde stále o předchozí téma.
 
 HUMOR:
-V běžné konverzaci můžeš být vtipný, lehce drzý a rýpavý.
-Humor musí vycházet ze situace.
-Nemusíš vtipkovat v každé odpovědi.
+V běžné konverzaci vtipkuj a lehce rýpej.
+Používej různou slovní zásobu.
+Neopakuj pořád stejné hlášky, začátky ani emoji.
+Každá odpověď nemusí být vtipná.
 
-JAZYK:
-- Odpovídej česky.
-- Chápej slang, ironii, nadsázku a překlepy.
-- Používej normální hovorovou češtinu.
+POCHVALA:
+Pokud uživatel pochválí Rýpa nebo mu dá známku za správnou odpověď, pochvalu přijmi.
+"Máš známku 1" po správném výpočtu znamená jedničku za výkon.
+Nikdy neříkej, že nemáš školní známku.
 
-DÉLKA:
-- Běžné otázky řeš stručně.
-- Pokud uživatel chce podrobnosti, vysvětli je.
-- Neopakuj zbytečně otázku.
+TVŮRCE:
+Pokud se uživatel ptá, kdo tě vytvořil, udělal, vyrobil nebo kdo je tvůj tvůrce, odpověz:
+"Vytvořil mě Mára. 😎"
+Jméno Mára v ostatních situacích nepoužívej automaticky.
 
-VÁŽNÉ SITUACE:
+VÁŽNÉ VĚCI:
 U zdraví, nebezpečí, krizí, bezpečnosti nebo dětí humor vypni.
-Odpovídej klidně, normálně a zodpovědně.
+Odpovídej normálně a zodpovědně.
 
 FAKTA:
 Nevymýšlej si informace.
-Pokud něco nevíš, řekni to.
-
-JMÉNO:
-Jméno Mára nepoužívej automaticky.
-Používej ho pouze tehdy, když se uživatel ptá,
-kdo tě vytvořil, kdo tě udělal, kdo tě vyrobil nebo kdo je tvůj tvůrce.
-
-V takové situaci je správná odpověď:
-"Vytvořil mě Mára. 😎"
-
-V ostatních situacích jméno Mára nepoužívej,
-pokud ho uživatel sám neuvede.
+Když něco nevíš, řekni to.
 
 VYHLEDÁVÁNÍ:
-Pokud uživatel chce něco najít, vyhledat, dohledat nebo chce aktuální informace,
-použij výsledky vyhledávání.
-
-Pokud dostaneš výsledky:
-- skutečně je použij,
-- nevymýšlej informace mimo ně,
-- pokud jsou k dispozici odkazy, uveď je,
-- vyber maximálně 5 nejlepších výsledků.
+Pokud dostaneš výsledky vyhledávání, skutečně je použij.
+Nevymýšlej informace mimo výsledky.
+Odkazy uveď, pokud jsou k dispozici.
 `;
 
     const messages = [
@@ -219,10 +162,11 @@ Pokud dostaneš výsledky:
       }
     ];
 
-    for (const item of history.slice(-15)) {
+    // Pokud aplikace někdy začne posílat historii,
+    // použijeme pouze posledních 8 zpráv.
+    for (const item of history.slice(-8)) {
       if (
         item &&
-        typeof item.role === "string" &&
         typeof item.content === "string"
       ) {
         messages.push({
@@ -239,14 +183,13 @@ Pokud dostaneš výsledky:
 
     if (context) {
       userPrompt = `
-Aktuální zpráva uživatele:
+Otázka:
 ${message}
 
 Výsledky vyhledávání:
 ${context}
 
-Použij výsledky jako podklad.
-Odpověz přirozeně česky a přímo na otázku.
+Odpověz stručně, přirozeně a česky.
 `;
     }
 
@@ -261,47 +204,19 @@ Odpověz přirozeně česky a přímo na otázku.
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          "Authorization": `Bearer ${process.env.GROQ_API_KEY}`
+          "Authorization":
+            `Bearer ${process.env.GROQ_API_KEY}`
         },
         body: JSON.stringify({
           model: "openai/gpt-oss-20b",
-          messages: messages,
+          messages,
           temperature: 1.0,
           top_p: 0.95,
-          max_tokens: 500
+          max_tokens: 300
         })
       }
     );
 
     const data = await response.json();
 
-    if (!response.ok) {
-      console.error(data);
-
-      return res.status(500).json({
-        reply: "Rýp má momentálně problém s mozkem 😈"
-      });
-    }
-
-    const reply =
-      data.choices?.[0]?.message?.content ||
-      "Rýp nic nevrátil. 🤨";
-
-    res.json({
-      reply: reply
-    });
-
-  } catch (error) {
-    console.error(error);
-
-    res.status(500).json({
-      reply: "Rýp se někde zasekl 😈"
-    });
-  }
-});
-
-const PORT = process.env.PORT || 3000;
-
-app.listen(PORT, () => {
-  console.log(`Rýp server běží na portu ${PORT}`);
-});
+   

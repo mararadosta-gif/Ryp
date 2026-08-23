@@ -41,7 +41,6 @@ app.post("/chat", async (req, res) => {
 
     let context = "";
 
-    // Rýp použije internet hlavně u dotazů na aktuální informace
     const webKeywords = [
       "dnes",
       "aktuálně",
@@ -122,3 +121,7 @@ ${context}`
 });
 
 const PORT = process.env.PORT || 3000;
+
+app.listen(PORT, () => {
+  console.log(`Rýp server běží na portu ${PORT}`);
+});

@@ -219,4 +219,31 @@ Odpověz stručně, přirozeně a česky.
 
     const data = await response.json();
 
-   
+    if (!response.ok) {
+      console.error(data);
+
+      return res.status(500).json({
+        reply: "Rýp má momentálně problém s mozkem 😈"
+      });
+    }
+
+    res.json({
+      reply:
+        data.choices?.[0]?.message?.content ||
+        "Rýp nic nevrátil. 🤨"
+    });
+
+  } catch (error) {
+    console.error(error);
+
+    res.status(500).json({
+      reply: "Rýp se někde zasekl 😈"
+    });
+  }
+});
+
+const PORT = process.env.PORT || 3000;
+
+app.listen(PORT, () => {
+  console.log(`Rýp server běží na portu ${PORT}`);
+});

@@ -14,20 +14,30 @@ app.post("/chat", async (req, res) => {
   try {
     const message = req.body.message;
 
-    const response = await fetch("https://api.openai.com/v1/responses", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "Authorization": `Bearer ${process.env.OPENAI_API_KEY}`
-      },
-      body: JSON.stringify({
-        model: "gpt-5.6-luna",
-        input: `Jsi Rýp, drzý a vtipný český AI parťák. Odpovídej česky, stručně a přirozeně.
-
-Uživatel říká:
-${message}`
-      })
-    });
+    const response = await fetch(
+      "https://api.groq.com/openai/v1/chat/completions",
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${process.env.GROQ_API_KEY}`
+        },
+        body: JSON.stringify({
+          model: "openai/gpt-oss-20b",
+          messages: [
+            {
+              role: "system",
+              content:
+                "Jsi Rýp, drzý a vtipný český AI parťák. Odpovídej česky, stručně a přirozeně."
+            },
+            {
+              role: "user",
+              content: message
+            }
+          ]
+        })
+      }
+    );
 
     const data = await response.json();
 
@@ -39,7 +49,7 @@ ${message}`
     }
 
     res.json({
-      reply: data.output_text
+      reply: data.choices?.[0]?.message?.content || "Rýp nic nevrátil. 🤨"
     });
 
   } catch (error) {

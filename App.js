@@ -7,7 +7,32 @@ import {
   TouchableOpacity,
   FlatList,
   StyleSheet,
+  Linking,
 } from "react-native";
+
+function MessageText({ text }) {
+  const parts = text.split(/(https?:\/\/[^\s]+)/g);
+
+  return (
+    <Text style={styles.messageText} selectable={true}>
+      {parts.map((part, index) => {
+        if (part.match(/^https?:\/\//)) {
+          return (
+            <Text
+              key={index}
+              style={styles.link}
+              onPress={() => Linking.openURL(part)}
+            >
+              {part}
+            </Text>
+          );
+        }
+
+        return part;
+      })}
+    </Text>
+  );
+}
 
 export default function App() {
   const [message, setMessage] = useState("");
@@ -74,6 +99,7 @@ export default function App() {
   return (
     <SafeAreaView style={styles.container}>
       <Text style={styles.title}>Rýp</Text>
+
       <Text style={styles.subtitle}>
         AI, která se s tebou nemaže.
       </Text>
@@ -89,9 +115,7 @@ export default function App() {
               item.bot ? styles.botMessage : styles.userMessage,
             ]}
           >
-            <Text style={styles.messageText}>
-              {item.text}
-            </Text>
+            <MessageText text={item.text} />
           </View>
         )}
       />
@@ -121,6 +145,7 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: "#111111",
   },
+
   title: {
     color: "#b7d900",
     fontSize: 38,
@@ -128,36 +153,49 @@ const styles = StyleSheet.create({
     textAlign: "center",
     marginTop: 20,
   },
+
   subtitle: {
     color: "#999",
     textAlign: "center",
     marginBottom: 10,
   },
+
   chat: {
     padding: 15,
   },
+
   message: {
     padding: 14,
     borderRadius: 18,
     marginVertical: 6,
     maxWidth: "85%",
   },
+
   botMessage: {
     backgroundColor: "#252525",
     alignSelf: "flex-start",
   },
+
   userMessage: {
     backgroundColor: "#b7d900",
     alignSelf: "flex-end",
   },
+
   messageText: {
     color: "#fff",
     fontSize: 16,
   },
+
+  link: {
+    color: "#5eb6ff",
+    textDecorationLine: "underline",
+  },
+
   inputRow: {
     flexDirection: "row",
     padding: 12,
   },
+
   input: {
     flex: 1,
     backgroundColor: "#252525",
@@ -166,6 +204,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 18,
     fontSize: 16,
   },
+
   button: {
     width: 52,
     height: 52,
@@ -175,6 +214,7 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     alignItems: "center",
   },
+
   buttonText: {
     fontSize: 24,
     color: "#111",

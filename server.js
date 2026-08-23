@@ -31,7 +31,12 @@ async function searchWeb(query) {
   const data = await response.json();
 
   return data.results
-    .map((result) => `${result.title}: ${result.content}`)
+    .map(
+      (result, index) =>
+        `${index + 1}. ${result.title}
+${result.content}
+🔗 ${result.url}`
+    )
     .join("\n\n");
 }
 
@@ -54,7 +59,11 @@ app.post("/chat", async (req, res) => {
       "zprávy",
       "internet",
       "vyhledej",
-      "najdi"
+      "najdi",
+      "web",
+      "stránku",
+      "odkaz",
+      "informace o"
     ];
 
     const needsWeb = webKeywords.some((word) =>
@@ -79,7 +88,7 @@ app.post("/chat", async (req, res) => {
             {
               role: "system",
               content:
-                "Jsi Rýp, drzý a vtipný český AI parťák. Odpovídej česky, stručně a přirozeně. Pokud dostaneš výsledky z internetu, používej je jako zdroj aktuálních informací."
+                "Jsi Rýp, drzý a vtipný český AI parťák. Odpovídej česky, stručně a přirozeně. Pokud dostaneš výsledky z internetu, používej je jako zdroj aktuálních informací. Pokud jsou ve výsledcích URL adresy, zachovej je v odpovědi."
             },
             {
               role: "user",

@@ -4,6 +4,7 @@
     "slug": "ryp",
     "version": "1.0.0",
     "orientation": "portrait",
+    "icon": "./file_00000000bf8881f4bf38d7b531a7d6eb.png",
     "android": {
       "package": "com.mara.rypai"
     },

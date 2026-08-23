@@ -1,16 +1,160 @@
-{
-  "expo": {
-    "name": "Mára & Rýp AI",
-    "slug": "ryp",
-    "version": "1.0.0",
-    "orientation": "portrait",
-    "android": {
-      "package": "com.mara.rypai"
+import React, { useState } from "react";
+import {
+  SafeAreaView,
+  View,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  FlatList,
+  StyleSheet,
+} from "react-native";
+
+export default function App() {
+  const [message, setMessage] = useState("");
+  const [messages, setMessages] = useState([
+    {
+      id: "1",
+      text: "Čau. Já jsem Rýp 😈 Co potřebuješ?",
+      sender: "ryp",
     },
-    "extra": {
-      "eas": {
-        "projectId": "9896e299-c8e2-4dd4-a015-869f71c4a9ba"
-      }
+  ]);
+
+  const sendMessage = async () => {
+    if (!message.trim()) return;
+
+    const userMessage = message;
+
+    setMessages((old) => [
+      ...old,
+      {
+        id: Date.now().toString(),
+        text: userMessage,
+        sender: "user",
+      },
+    ]);
+
+    setMessage("");
+
+    try {
+      const response = await fetch("http://10.0.2.2:3000/chat", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          message: userMessage,
+        }),
+      });
+
+      const data = await response.json();
+
+      setMessages((old) => [
+        ...old,
+        {
+          id: (Date.now() + 1).toString(),
+          text: data.reply,
+          sender: "ryp",
+        },
+      ]);
+    } catch (error) {
+      setMessages((old) => [
+        ...old,
+        {
+          id: (Date.now() + 1).toString(),
+          text: "Server neodpovídá. 😈",
+          sender: "ryp",
+        },
+      ]);
     }
-  }
+  };
+
+  return (
+    <SafeAreaView style={styles.container}>
+      <Text style={styles.title}>Mára & Rýp AI 😈</Text>
+
+      <FlatList
+        data={messages}
+        keyExtractor={(item) => item.id}
+        renderItem={({ item }) => (
+          <View
+            style={[
+              styles.message,
+              item.sender === "user"
+                ? styles.userMessage
+                : styles.rypMessage,
+            ]}
+          >
+            <Text style={styles.messageText}>{item.text}</Text>
+          </View>
+        )}
+      />
+
+      <View style={styles.inputRow}>
+        <TextInput
+          style={styles.input}
+          value={message}
+          onChangeText={setMessage}
+          placeholder="Napiš Rýpovi..."
+          placeholderTextColor="#888"
+        />
+
+        <TouchableOpacity style={styles.button} onPress={sendMessage}>
+          <Text style={styles.buttonText}>➤</Text>
+        </TouchableOpacity>
+      </View>
+    </SafeAreaView>
+  );
 }
+
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+    backgroundColor: "#111",
+    padding: 15,
+  },
+  title: {
+    color: "#fff",
+    fontSize: 24,
+    fontWeight: "bold",
+    marginBottom: 15,
+  },
+  message: {
+    padding: 12,
+    marginVertical: 5,
+    borderRadius: 12,
+    maxWidth: "85%",
+  },
+  userMessage: {
+    backgroundColor: "#333",
+    alignSelf: "flex-end",
+  },
+  rypMessage: {
+    backgroundColor: "#222",
+    alignSelf: "flex-start",
+  },
+  messageText: {
+    color: "#fff",
+    fontSize: 16,
+  },
+  inputRow: {
+    flexDirection: "row",
+    alignItems: "center",
+  },
+  input: {
+    flex: 1,
+    backgroundColor: "#222",
+    color: "#fff",
+    padding: 12,
+    borderRadius: 10,
+    marginRight: 8,
+  },
+  button: {
+    backgroundColor: "#444",
+    padding: 12,
+    borderRadius: 10,
+  },
+  buttonText: {
+    color: "#fff",
+    fontSize: 20,
+  },
+});

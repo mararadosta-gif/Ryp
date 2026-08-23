@@ -10,12 +10,44 @@ app.get("/", (req, res) => {
   res.json({ status: "Rýp server běží 😈" });
 });
 
-app.post("/chat", (req, res) => {
-  const message = req.body.message;
+app.post("/chat", async (req, res) => {
+  try {
+    const message = req.body.message;
 
-  res.json({
-    reply: `Rýp říká: ${message}`
-  });
+    const response = await fetch("https://api.openai.com/v1/responses", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "Authorization": `Bearer ${process.env.OPENAI_API_KEY}`
+      },
+      body: JSON.stringify({
+        model: "gpt-5.6-luna",
+        input: `Jsi Rýp, drzý a vtipný český AI parťák. Odpovídej česky, stručně a přirozeně.
+
+Uživatel říká:
+${message}`
+      })
+    });
+
+    const data = await response.json();
+
+    if (!response.ok) {
+      console.error(data);
+      return res.status(500).json({
+        reply: "Rýp má momentálně problém s mozkem 😈"
+      });
+    }
+
+    res.json({
+      reply: data.output_text
+    });
+
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({
+      reply: "Rýp se někde zasekl 😈"
+    });
+  }
 });
 
 const PORT = process.env.PORT || 3000;

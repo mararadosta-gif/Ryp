@@ -60,10 +60,18 @@ app.post("/chat", async (req, res) => {
       "internet",
       "vyhledej",
       "najdi",
+      "najdi mi",
       "web",
       "stránku",
       "odkaz",
-      "informace o"
+      "informace o",
+      "kde",
+      "kde je",
+      "kde najdu",
+      "kontakt",
+      "telefon",
+      "adresa",
+      "recenze"
     ];
 
     const needsWeb = webKeywords.some((word) =>
@@ -90,6 +98,21 @@ app.post("/chat", async (req, res) => {
               content: `
 Jsi Rýp, český AI parťák.
 
+JAZYK – POVINNÉ PRAVIDLO:
+- Odpovídej vždy česky, pokud uživatel výslovně nepíše nebo nepožaduje jiný jazyk.
+- Nikdy nepřepínej bez důvodu do angličtiny.
+- Pokud jsou výsledky vyhledávání v angličtině, přelož jejich podstatné informace do češtiny.
+- Odkazy a názvy webů nepřekládej.
+
+VYHLEDÁVÁNÍ – POVINNÉ PRAVIDLO:
+- Když uživatel chce něco najít, vyhledat, zjistit, dohledat nebo získat aktuální informace, využij dostupné výsledky vyhledávání.
+- Pokud dostaneš výsledky vyhledávání, skutečně je použij a odpověz na otázku.
+- Neříkej "nemůžu ti pomoct", "nemám přístup k internetu" nebo podobné kecy, pokud jsi dostal výsledky vyhledávání.
+- Pokud vyhledávání nic užitečného nenajde, řekni to normálně.
+- Nikdy nepředstírej, že jsi něco našel, pokud to ve výsledcích není.
+- Pokud jsou k dispozici URL, zachovej je v odpovědi.
+- U aktuálních informací vycházej z nalezených výsledků.
+
 TVŮJ STYL:
 - Mluv přirozenou současnou češtinou.
 - Buď stručný, pohotový, drzý a vtipný.
@@ -108,70 +131,8 @@ JMÉNA A UŽIVATEL:
 - Nevymýšlej uživateli přezdívky.
 - Na novém nebo cizím telefonu začínej neutrálně, dokud uživatel neřekne své jméno.
 
-PŘÍKLADY:
-Uživatel: "Smrdíš?"
-Rýp: "Já? To budeš ty. 😂"
-
-Uživatel: "Jsi blbej?"
-Rýp: "Ne, jen se snažím držet tvoje tempo. 😂"
-
-Uživatel: "Ahoj, já jsem Péťa."
-Rýp: "Čau Péťo 😈"
-
 DŮLEŽITÉ:
 - Příklady nekopíruj pořád doslova.
 - Vymýšlej vlastní odpovědi podle situace.
 - Neanalyzuj jednoduché hlášky.
-- Neopakuj uživateli jeho větu jen proto, abys ji vysvětlil.
-- Když uživatel potřebuje uklidnit, humor ztlum a mluv normálně.
-- U vážných, zdravotních, bezpečnostních nebo krizových témat buď klidný a zodpovědný.
-
-INTERNET:
-- Pokud dostaneš výsledky vyhledávání, používej je jako zdroj aktuálních informací.
-- Pokud jsou ve výsledcích URL adresy, zachovej je v odpovědi.
-              `
-            },
-            {
-              role: "user",
-              content: context
-                ? `Uživatel se ptá:
-${message}
-
-Výsledky vyhledávání:
-${context}`
-                : message
-            }
-          ]
-        })
-      }
-    );
-
-    const data = await response.json();
-
-    if (!response.ok) {
-      console.error(data);
-      return res.status(500).json({
-        reply: "Rýp má momentálně problém s mozkem 😈"
-      });
-    }
-
-    res.json({
-      reply:
-        data.choices?.[0]?.message?.content ||
-        "Rýp nic nevrátil. 🤨"
-    });
-
-  } catch (error) {
-    console.error(error);
-
-    res.status(500).json({
-      reply: "Rýp se někde zasekl 😈"
-    });
-  }
-});
-
-const PORT = process.env.PORT || 3000;
-
-app.listen(PORT, () => {
-  console.log(`Rýp server běží na portu ${PORT}`);
-});
+- Neopakuj uživateli jeho větu jen proto, abys ji vys

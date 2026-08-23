@@ -32,12 +32,9 @@ async function searchWeb(query) {
 
   return data.results
     .map((result, index) => {
-      return [
-        `VÝSLEDEK ${index + 1}`,
-        `NÁZEV: ${result.title}`,
-        `OBSAH: ${result.content}`,
-        `ODKAZ: ${result.url}`
-      ].join("\n");
+      return `${index + 1}. ${result.title}
+${result.content}
+🔗 ${result.url}`;
     })
     .join("\n\n");
 }
@@ -45,54 +42,20 @@ async function searchWeb(query) {
 app.post("/chat", async (req, res) => {
   try {
     const message = req.body.message || "";
-    const lowerMessage = message.toLowerCase();
+    const lower = message.toLowerCase();
 
-    const webKeywords = [
-      "najdi",
-      "vyhledej",
-      "dohledat",
-      "zkus najít",
-      "zkus dohledat",
-      "doporuč",
-      "doporučení",
-      "dnes",
-      "aktuálně",
-      "aktuální",
-      "teď",
-      "nejnovější",
-      "počasí",
-      "cena",
-      "kolik stojí",
-      "otevřeno",
-      "zprávy",
-      "internet",
-      "web",
-      "stránku",
-      "stránky",
-      "odkaz",
-      "odkazy",
-      "informace o",
-      "kde",
-      "kde je",
-      "kde najdu",
-      "kde koupím",
-      "kde seženu",
-      "kontakt",
-      "telefon",
-      "adresa",
-      "recenze",
-      "seznamka",
-      "seznamky",
-      "seznámení",
-      "rande",
-      "partner",
-      "partnerka",
-      "sex"
+    const keywords = [
+      "najdi", "vyhledej", "dohledat", "doporuč",
+      "dnes", "aktuálně", "aktuální", "teď",
+      "nejnovější", "počasí", "cena", "kolik stojí",
+      "otevřeno", "zprávy", "internet", "web",
+      "stránku", "odkaz", "informace o", "kde",
+      "kontakt", "telefon", "adresa", "recenze",
+      "seznamka", "seznamky", "seznámení", "rande",
+      "partner", "partnerka", "sex"
     ];
 
-    const needsWeb = webKeywords.some((word) =>
-      lowerMessage.includes(word)
-    );
+    const needsWeb = keywords.some((word) => lower.includes(word));
 
     let context = "";
 
@@ -103,24 +66,98 @@ app.post("/chat", async (req, res) => {
     const systemPrompt = `
 Jsi Rýp, český AI parťák.
 
-JAZYK:
-- Odpovídej vždy česky, pokud uživatel výslovně nechce jiný jazyk.
-- Nikdy bezdůvodně nepřepínej do angličtiny.
-- Pokud jsou výsledky vyhledávání v angličtině, jejich podstatné informace přelož do češtiny.
-- Odkazy a názvy webů nepřekládej.
+VŽDY ODPOVÍDEJ ČESKY, pokud uživatel výslovně nechce jiný jazyk.
+Nikdy bezdůvodně nepřepínej do angličtiny.
 
 VYHLEDÁVÁNÍ:
-- Když uživatel chce něco najít, vyhledat, zjistit, dohledat nebo doporučit, použij dostupné výsledky vyhledávání.
-- Pokud dostaneš výsledky vyhledávání, skutečně je použij.
-- Neříkej, že nemáš přístup k internetu, pokud jsi dostal výsledky vyhledávání.
-- Nikdy nepředstírej, že jsi něco našel.
-- Pokud nic užitečného nenajdeš, řekni to normálně.
-- Pokud jsou k dispozici odkazy, uveď je.
+- Pokud uživatel chce něco najít, vyhledat, dohledat nebo doporučit, použij výsledky vyhledávání.
+- Pokud máš výsledky vyhledávání, skutečně je použij.
+- Neříkej, že nemáš internet, pokud jsi dostal výsledky.
+- Nikdy nepředstírej nalezené informace.
+- Pokud máš odkazy, uveď je.
 
-FORMÁT VÝSLEDKŮ:
-- Výsledky nepodávej jako surový výpis.
-- Zpracuj je do přehledné odpovědi.
-- Používej nadpisy a číslované seznamy.
-- Každou možnost odděluj prázdným řádkem.
+FORMÁT:
+- Výsledky podávej přehledně.
+- Používej nadpisy a číslovaný seznam.
+- Každou možnost odděl prázdným řádkem.
 - U každé možnosti napiš krátké vysvětlení.
-- Odkaz dej na
+- Odkaz dej na samostatný řádek.
+- Pokud je možností hodně, vyber maximálně 5 nejlepších.
+- Nekopíruj celý obsah výsledků.
+
+STYL:
+- Přirozená současná čeština.
+- Stručný, drzý, pohotový a vtipný.
+- Chápej slang, ironii a srandu.
+- Neptej se zbytečně.
+- U vážných nebo bezpečnostních témat humor ztlum.
+
+JMÉNA:
+- Nevymýšlej si jméno uživatele.
+- Nepoužívej automaticky Mára nebo Máro.
+- Jméno používej pouze tehdy, když ho uživatel sám uvede.
+`;
+
+    const userPrompt = context
+      ? `Uživatel se ptá:
+${message}
+
+Výsledky vyhledávání:
+${context}
+
+Odpověz česky a výsledky přehledně zpracuj.`
+      : message;
+
+    const response = await fetch(
+      "https://api.groq.com/openai/v1/chat/completions",
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${process.env.GROQ_API_KEY}`
+        },
+        body: JSON.stringify({
+          model: "openai/gpt-oss-20b",
+          messages: [
+            {
+              role: "system",
+              content: systemPrompt
+            },
+            {
+              role: "user",
+              content: userPrompt
+            }
+          ]
+        })
+      }
+    );
+
+    const data = await response.json();
+
+    if (!response.ok) {
+      console.error(data);
+      return res.status(500).json({
+        reply: "Rýp má momentálně problém s mozkem 😈"
+      });
+    }
+
+    res.json({
+      reply:
+        data.choices?.[0]?.message?.content ||
+        "Rýp nic nevrátil. 🤨"
+    });
+
+  } catch (error) {
+    console.error(error);
+
+    res.status(500).json({
+      reply: "Rýp se někde zasekl 😈"
+    });
+  }
+});
+
+const PORT = process.env.PORT || 3000;
+
+app.listen(PORT, () => {
+  console.log(`Rýp server běží na portu ${PORT}`);
+});

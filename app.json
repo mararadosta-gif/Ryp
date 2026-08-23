@@ -6,6 +6,11 @@
     "orientation": "portrait",
     "android": {
       "package": "com.mara.rypai"
+    },
+    "extra": {
+      "eas": {
+        "projectId": "9896e299-c8e2-4dd4-a015-869f71c4a9ba"
+      }
     }
   }
 }

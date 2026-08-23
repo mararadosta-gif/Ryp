@@ -101,7 +101,7 @@ export default function App() {
     <SafeAreaView style={styles.container}>
 
       <Image
-        source={require("./assets/ryp-avatar.png")}
+        source={require("./file_00000000bf8881f4bf38d7b531a7d6eb.png")}
         style={styles.avatar}
       />
 
@@ -143,6 +143,7 @@ export default function App() {
           <Text style={styles.buttonText}>➤</Text>
         </TouchableOpacity>
       </View>
+
     </SafeAreaView>
   );
 }

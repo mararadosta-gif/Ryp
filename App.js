@@ -17,8 +17,21 @@ import {
 
 import * as ImagePicker from "expo-image-picker";
 
+const SERVER_URL = "https://ryp-hpvu.onrender.com/chat";
+
+function cleanText(text) {
+  if (!text) return "";
+
+  return text
+    .replace(/\*\*/g, "")
+    .replace(/__/g, "")
+    .replace(/^#{1,6}\s?/gm, "")
+    .trim();
+}
+
 function MessageText({ text }) {
-  const parts = text.split(/(https?:\/\/[^\s]+)/g);
+  const cleanedText = cleanText(text);
+  const parts = cleanedText.split(/(https?:\/\/[^\s]+)/g);
 
   return (
     <Text style={styles.messageText} selectable={true}>
@@ -43,8 +56,6 @@ function MessageText({ text }) {
 
 export default function App() {
   const [message, setMessage] = useState("");
-  const [loading, setLoading] = useState(false);
-  const [selectedImage, setSelectedImage] = useState(null);
 
   const [messages, setMessages] = useState([
     {
@@ -54,16 +65,25 @@ export default function App() {
     },
   ]);
 
+  const [loading, setLoading] = useState(false);
+  const [selectedImage, setSelectedImage] = useState(null);
+
   const flatListRef = useRef(null);
 
+  // Automaticky sjede na poslední zprávu
   useEffect(() => {
+    scrollToBottom();
+  }, [messages, loading]);
+
+  const scrollToBottom = () => {
     setTimeout(() => {
       flatListRef.current?.scrollToEnd({
         animated: true,
       });
     }, 100);
-  }, [messages, loading]);
+  };
 
+  // GALERIE
   const pickImage = async () => {
     try {
       const permission =
@@ -93,6 +113,7 @@ export default function App() {
     }
   };
 
+  // FOŤÁK
   const takePhoto = async () => {
     try {
       const permission =
@@ -121,6 +142,7 @@ export default function App() {
     }
   };
 
+  // NABÍDKA FOŤÁK / GALERIE
   const chooseImage = () => {
     Alert.alert(
       "Rýp 📷",
@@ -142,6 +164,7 @@ export default function App() {
     );
   };
 
+  // ODESLÁNÍ ZPRÁVY
   const sendMessage = async () => {
     if ((!message.trim() && !selectedImage) || loading) {
       return;
@@ -150,53 +173,55 @@ export default function App() {
     const userText =
       message.trim() || "Podívej se na tenhle obrázek.";
 
+    // Posledních 12 zpráv pro kontext
     const historyForServer = messages
       .slice(-12)
       .map((item) => ({
         role: item.bot ? "assistant" : "user",
-        content: item.text,
+        content: cleanText(item.text),
       }));
 
     const imageToSend = selectedImage;
 
+    // Zobrazíme uživatelskou zprávu okamžitě
     const userMessage = {
       id: `${Date.now()}-user`,
       text: imageToSend
         ? `📷 ${userText}`
         : userText,
       bot: false,
-      imageUri: imageToSend?.uri || null,
     };
 
     setMessages((old) => [...old, userMessage]);
+
     setMessage("");
     setSelectedImage(null);
     setLoading(true);
 
     try {
-      const response = await fetch(
-        "https://ryp-hpvu.onrender.com/chat",
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            message: userText,
-            history: historyForServer,
-            image: imageToSend
-              ? {
-                  base64: imageToSend.base64,
-                  mimeType:
-                    imageToSend.mimeType || "image/jpeg",
-                }
-              : null,
-          }),
-        }
-      );
+      const response = await fetch(SERVER_URL, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          message: userText,
+          history: historyForServer,
+
+          image: imageToSend
+            ? {
+                base64: imageToSend.base64,
+                mimeType:
+                  imageToSend.mimeType || "image/jpeg",
+              }
+            : null,
+        }),
+      });
 
       if (!response.ok) {
-        throw new Error("Server error");
+        throw new Error(
+          `Server returned ${response.status}`
+        );
       }
 
       const data = await response.json();
@@ -234,28 +259,33 @@ export default function App() {
         behavior={
           Platform.OS === "ios"
             ? "padding"
-            : undefined
+            : "height"
         }
       >
-        <Image
-          source={require(
-            "./file_00000000bf8881f4bf38d7b531a7d6eb.png"
-          )}
-          style={styles.avatar}
-        />
+        {/* HLAVIČKA */}
+        <View style={styles.header}>
+          <Image
+            source={require(
+              "./file_00000000bf8881f4bf38d7b531a7d6eb.png"
+            )}
+            style={styles.avatar}
+          />
 
-        <Text style={styles.title}>Rýp</Text>
+          <Text style={styles.title}>Rýp</Text>
 
-        <Text style={styles.subtitle}>
-          AI, která se s tebou nemaže.
-        </Text>
+          <Text style={styles.subtitle}>
+            AI, která se s tebou nemaže.
+          </Text>
+        </View>
 
+        {/* CHAT */}
         <FlatList
           ref={flatListRef}
           data={messages}
           keyExtractor={(item) => item.id}
           contentContainerStyle={styles.chat}
           keyboardShouldPersistTaps="handled"
+          onContentSizeChange={scrollToBottom}
           renderItem={({ item }) => (
             <View
               style={[
@@ -265,34 +295,32 @@ export default function App() {
                   : styles.userMessage,
               ]}
             >
-              {item.imageUri && (
-                <Image
-                  source={{ uri: item.imageUri }}
-                  style={styles.chatImage}
-                />
-              )}
-
               <MessageText text={item.text} />
             </View>
           )}
         />
 
+        {/* PŘEMÝŠLENÍ */}
         {loading && (
-          <View style={styles.loadingRow}>
+          <View style={styles.loadingBox}>
             <ActivityIndicator
               size="small"
               color="#b7d900"
             />
+
             <Text style={styles.loadingText}>
-              Rýp přemýšlí... 🤔
+              Rýp přemýšlí… 😈
             </Text>
           </View>
         )}
 
+        {/* NÁHLED VYBRANÉHO OBRÁZKU */}
         {selectedImage && (
           <View style={styles.previewBox}>
             <Image
-              source={{ uri: selectedImage.uri }}
+              source={{
+                uri: selectedImage.uri,
+              }}
               style={styles.previewImage}
             />
 
@@ -300,18 +328,21 @@ export default function App() {
               style={styles.removeImage}
               onPress={() => setSelectedImage(null)}
             >
-              <Text style={styles.removeText}>✕</Text>
+              <Text style={styles.removeImageText}>
+                ✕
+              </Text>
             </TouchableOpacity>
           </View>
         )}
 
+        {/* INPUT */}
         <View style={styles.inputRow}>
           <TouchableOpacity
-            style={styles.imageButton}
+            style={styles.cameraButton}
             onPress={chooseImage}
             disabled={loading}
           >
-            <Text style={styles.imageButtonText}>
+            <Text style={styles.cameraText}>
               📷
             </Text>
           </TouchableOpacity>
@@ -323,6 +354,8 @@ export default function App() {
             placeholderTextColor="#777"
             style={styles.input}
             multiline
+            maxLength={4000}
+            editable={!loading}
           />
 
           <TouchableOpacity
@@ -333,7 +366,9 @@ export default function App() {
             onPress={sendMessage}
             disabled={loading}
           >
-            <Text style={styles.buttonText}>➤</Text>
+            <Text style={styles.buttonText}>
+              ➤
+            </Text>
           </TouchableOpacity>
         </View>
       </KeyboardAvoidingView>
@@ -347,12 +382,15 @@ const styles = StyleSheet.create({
     backgroundColor: "#111111",
   },
 
+  header: {
+    alignItems: "center",
+    paddingTop: 10,
+  },
+
   avatar: {
     width: 90,
     height: 90,
     borderRadius: 45,
-    alignSelf: "center",
-    marginTop: 10,
   },
 
   title: {
@@ -366,7 +404,7 @@ const styles = StyleSheet.create({
   subtitle: {
     color: "#999",
     textAlign: "center",
-    marginBottom: 10,
+    marginBottom: 8,
   },
 
   chat: {
@@ -394,6 +432,7 @@ const styles = StyleSheet.create({
   messageText: {
     color: "#fff",
     fontSize: 16,
+    lineHeight: 22,
   },
 
   link: {
@@ -401,14 +440,7 @@ const styles = StyleSheet.create({
     textDecorationLine: "underline",
   },
 
-  chatImage: {
-    width: 220,
-    height: 220,
-    borderRadius: 12,
-    marginBottom: 8,
-  },
-
-  loadingRow: {
+  loadingBox: {
     flexDirection: "row",
     alignItems: "center",
     paddingHorizontal: 18,
@@ -438,15 +470,15 @@ const styles = StyleSheet.create({
     position: "absolute",
     right: -8,
     top: -8,
-    width: 26,
-    height: 26,
+    width: 25,
+    height: 25,
     borderRadius: 13,
     backgroundColor: "#333",
     justifyContent: "center",
     alignItems: "center",
   },
 
-  removeText: {
+  removeImageText: {
     color: "#fff",
     fontSize: 14,
     fontWeight: "bold",
@@ -456,9 +488,10 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "flex-end",
     padding: 12,
+    paddingTop: 6,
   },
 
-  imageButton: {
+  cameraButton: {
     width: 52,
     height: 52,
     borderRadius: 26,
@@ -468,18 +501,20 @@ const styles = StyleSheet.create({
     marginRight: 8,
   },
 
-  imageButtonText: {
+  cameraText: {
     fontSize: 23,
   },
 
   input: {
     flex: 1,
-    maxHeight: 110,
+    maxHeight: 120,
+    minHeight: 52,
     backgroundColor: "#252525",
     color: "#fff",
     borderRadius: 25,
     paddingHorizontal: 18,
-    paddingVertical: 14,
+    paddingTop: 14,
+    paddingBottom: 12,
     fontSize: 16,
   },
 

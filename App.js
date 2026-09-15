@@ -68,9 +68,19 @@ export default function App() {
   const [loading, setLoading] = useState(false);
   const [selectedImage, setSelectedImage] = useState(null);
 
+  // 🎮 MINI HRA
+  const [gameOpen, setGameOpen] = useState(false);
+  const [secretNumber, setSecretNumber] = useState(
+    Math.floor(Math.random() * 20) + 1
+  );
+  const [guess, setGuess] = useState("");
+  const [gameMessage, setGameMessage] = useState(
+    "Myslím si číslo od 1 do 20. Hádej! 😈"
+  );
+  const [score, setScore] = useState(0);
+
   const flatListRef = useRef(null);
 
-  // Automaticky sjede na poslední zprávu
   useEffect(() => {
     scrollToBottom();
   }, [messages, loading]);
@@ -81,6 +91,49 @@ export default function App() {
         animated: true,
       });
     }, 100);
+  };
+
+  // 🎮 NOVÁ HRA
+  const startGame = () => {
+    setSecretNumber(Math.floor(Math.random() * 20) + 1);
+    setGuess("");
+    setGameMessage("Myslím si číslo od 1 do 20. Hádej! 😈");
+    setGameOpen(true);
+  };
+
+  // 🎮 HÁDÁNÍ
+  const makeGuess = () => {
+    const number = Number(guess);
+
+    if (!number || number < 1 || number > 20) {
+      setGameMessage("Zadej číslo od 1 do 20, šampióne. 😂");
+      return;
+    }
+
+    if (number === secretNumber) {
+      const newScore = score + 1;
+      setScore(newScore);
+
+      setGameMessage(
+        `🎉 Trefa! Číslo bylo ${secretNumber}. Skóre: ${newScore}`
+      );
+
+      setTimeout(() => {
+        setSecretNumber(Math.floor(Math.random() * 20) + 1);
+        setGuess("");
+        setGameMessage("Nové číslo! Tak ukaž, jestli máš štěstí. 😈");
+      }, 1200);
+
+      return;
+    }
+
+    if (number < secretNumber) {
+      setGameMessage("Moc málo! 🔽 Zkus větší číslo.");
+    } else {
+      setGameMessage("Moc vysoko! 🔼 Zkus menší číslo.");
+    }
+
+    setGuess("");
   };
 
   // GALERIE
@@ -173,7 +226,6 @@ export default function App() {
     const userText =
       message.trim() || "Podívej se na tenhle obrázek.";
 
-    // Posledních 12 zpráv pro kontext
     const historyForServer = messages
       .slice(-12)
       .map((item) => ({
@@ -183,7 +235,6 @@ export default function App() {
 
     const imageToSend = selectedImage;
 
-    // Zobrazíme uživatelskou zprávu okamžitě
     const userMessage = {
       id: `${Date.now()}-user`,
       text: imageToSend
@@ -262,6 +313,7 @@ export default function App() {
             : "height"
         }
       >
+
         {/* HLAVIČKA */}
         <View style={styles.header}>
           <Image
@@ -276,7 +328,65 @@ export default function App() {
           <Text style={styles.subtitle}>
             AI, která se s tebou nemaže.
           </Text>
+
+          {/* 🎮 MINIHRY */}
+          <TouchableOpacity
+            style={styles.gameButton}
+            onPress={startGame}
+          >
+            <Text style={styles.gameButtonText}>
+              🎮 MINIHRY
+            </Text>
+          </TouchableOpacity>
         </View>
+
+        {/* 🎮 HRA */}
+        {gameOpen && (
+          <View style={styles.gameBox}>
+            <View style={styles.gameTop}>
+              <Text style={styles.gameTitle}>
+                🎮 Hádej číslo
+              </Text>
+
+              <TouchableOpacity
+                onPress={() => setGameOpen(false)}
+              >
+                <Text style={styles.gameClose}>
+                  ✕
+                </Text>
+              </TouchableOpacity>
+            </View>
+
+            <Text style={styles.gameMessage}>
+              {gameMessage}
+            </Text>
+
+            <View style={styles.guessRow}>
+              <TextInput
+                value={guess}
+                onChangeText={setGuess}
+                keyboardType="number-pad"
+                maxLength={2}
+                placeholder="1–20"
+                placeholderTextColor="#777"
+                style={styles.guessInput}
+              />
+
+              <TouchableOpacity
+                style={styles.guessButton}
+                onPress={makeGuess}
+              >
+                <Text style={styles.guessButtonText}>
+                  HÁDAT
+                </Text>
+              </TouchableOpacity>
+            </View>
+
+            <Text style={styles.score}>
+              🏆 Skóre: {score}
+            </Text>
+          </View>
+        )}
 
         {/* CHAT */}
         <FlatList
@@ -314,7 +424,7 @@ export default function App() {
           </View>
         )}
 
-        {/* NÁHLED VYBRANÉHO OBRÁZKU */}
+        {/* NÁHLED OBRÁZKU */}
         {selectedImage && (
           <View style={styles.previewBox}>
             <Image
@@ -405,6 +515,90 @@ const styles = StyleSheet.create({
     color: "#999",
     textAlign: "center",
     marginBottom: 8,
+  },
+
+  gameButton: {
+    backgroundColor: "#b7d900",
+    paddingHorizontal: 22,
+    paddingVertical: 10,
+    borderRadius: 22,
+    marginBottom: 8,
+  },
+
+  gameButtonText: {
+    color: "#111",
+    fontWeight: "bold",
+    fontSize: 15,
+  },
+
+  gameBox: {
+    backgroundColor: "#202020",
+    marginHorizontal: 12,
+    marginBottom: 5,
+    padding: 15,
+    borderRadius: 18,
+    borderWidth: 1,
+    borderColor: "#333",
+  },
+
+  gameTop: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+  },
+
+  gameTitle: {
+    color: "#b7d900",
+    fontSize: 20,
+    fontWeight: "bold",
+  },
+
+  gameClose: {
+    color: "#fff",
+    fontSize: 20,
+    padding: 5,
+  },
+
+  gameMessage: {
+    color: "#fff",
+    fontSize: 16,
+    marginTop: 12,
+    marginBottom: 12,
+  },
+
+  guessRow: {
+    flexDirection: "row",
+    alignItems: "center",
+  },
+
+  guessInput: {
+    flex: 1,
+    backgroundColor: "#111",
+    color: "#fff",
+    borderRadius: 20,
+    paddingHorizontal: 16,
+    height: 48,
+    fontSize: 18,
+  },
+
+  guessButton: {
+    backgroundColor: "#b7d900",
+    height: 48,
+    paddingHorizontal: 16,
+    borderRadius: 20,
+    justifyContent: "center",
+    marginLeft: 8,
+  },
+
+  guessButtonText: {
+    color: "#111",
+    fontWeight: "bold",
+  },
+
+  score: {
+    color: "#aaa",
+    marginTop: 10,
+    textAlign: "center",
   },
 
   chat: {
@@ -536,4 +730,4 @@ const styles = StyleSheet.create({
     fontSize: 24,
     color: "#111",
   },
-});
+})

@@ -730,4 +730,4 @@ const styles = StyleSheet.create({
     fontSize: 24,
     color: "#111",
   },
-})
+});

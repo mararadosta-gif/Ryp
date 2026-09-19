@@ -1,22 +1,15 @@
 import React, { useEffect, useRef, useState } from "react";
 import {
-  SafeAreaView,
   View,
   Text,
-  Image,
   TextInput,
   TouchableOpacity,
   FlatList,
+  Image,
   StyleSheet,
-  Linking,
-  KeyboardAvoidingView,
-  Platform,
-  ActivityIndicator,
-  Alert,
   Modal,
-  ScrollView,
+  Alert,
 } from "react-native";
-
 import * as ImagePicker from "expo-image-picker";
 import * as ImageManipulator from "expo-image-manipulator";
 import AsyncStorage from "@react-native-async-storage/async-storage";
@@ -24,1054 +17,788 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 const SERVER_URL = "https://ryp-hpvu.onrender.com/chat";
 const CHATS_KEY = "@ryp_saved_chats_v5";
 
-function cleanText(text) {
-  if (!text) return "";
-
-  return text
+const cleanText = (text) =>
+  String(text || "")
     .replace(/\*\*/g, "")
-    .replace(/__/g, "")
-    .replace(/^#{1,6}\s?/gm, "")
+    .replace(/###/g, "")
     .trim();
-}
-
-function MessageText({ text }) {
-  const cleanedText = cleanText(text);
-  const parts = cleanedText.split(/(https?:\/\/[^\s]+)/g);
-
-  return (
-    <Text style={styles.messageText} selectable={true}>
-      {parts.map((part, index) => {
-        if (/^https?:\/\//.test(part)) {
-          return (
-            <Text
-              key={index}
-              style={styles.link}
-              onPress={() => Linking.openURL(part)}
-            >
-              {part}
-            </Text>
-          );
-        }
-
-        return part;
-      })}
-    </Text>
-  );
-}
-
-const GAME_LIST = [
-  ["number", "🎯 Číslo"],
-  ["word", "🔤 Slovo"],
-  ["reaction", "⚡ Postřeh"],
-  ["rps", "✂️ KNP"],
-  ["memory", "🧠 Paměť"],
-  ["target", "🎯 Terč"],
-  ["snake", "🐍 Had"],
-];
-
-const randomNumber = (max) => Math.floor(Math.random() * max);
 
 export default function App() {
-  const [message, setMessage] = useState("");
-
   const [messages, setMessages] = useState([
     {
-      id: "1",
-      text: "Čau. Já jsem Rýp. Tak povídej, co zase potřebuješ. 😂",
-      bot: true,
+      id: "welcome",
+      role: "assistant",
+      text: "Čau! Já jsem Rýp 😎 Co dneska vymyslíme?",
     },
   ]);
 
+  const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
   const [selectedImage, setSelectedImage] = useState(null);
-
-  // =========================
-  // MINIHRY
-  // =========================
-
-  const [gameOpen, setGameOpen] = useState(false);
-  const [game, setGame] = useState("number");
-
-  // HÁDEJ ČÍSLO
-  const [secretNumber, setSecretNumber] = useState(
-    randomNumber(20) + 1
-  );
-
-  const [guess, setGuess] = useState("");
-
-  const [gameMessage, setGameMessage] = useState(
-    "Myslím si číslo od 1 do 20. Hádej! 😈"
-  );
-
-  const [score, setScore] = useState(0);
-
-  // HÁDEJ SLOVO
-  const [word, setWord] = useState("");
-  const [wordGuess, setWordGuess] = useState("");
-  const [wordMessage, setWordMessage] = useState("");
-
-  // POSTŘEH
-  const [reactionStarted, setReactionStarted] = useState(false);
-  const [reactionReady, setReactionReady] = useState(false);
-  const [reactionStart, setReactionStart] = useState(0);
-  const [reactionMessage, setReactionMessage] = useState(
-    "Stiskni START."
-  );
-
-  const reactionTimer = useRef(null);
-
-  // KÁMEN NŮŽKY PAPÍR
-  const [rpsMessage, setRpsMessage] = useState("");
-
-  // PAMĚŤ
-  const [memorySequence, setMemorySequence] = useState([]);
-  const [memoryInput, setMemoryInput] = useState("");
-  const [memoryMessage, setMemoryMessage] = useState("");
-  const [memoryRound, setMemoryRound] = useState(1);
-
-  // TERČ
-  const [targetPos, setTargetPos] = useState({
-    x: 50,
-    y: 40,
-  });
-
-  const [targetMessage, setTargetMessage] = useState(
-    "Klepni na terč!"
-  );
-
-  // HAD
-  const [snake, setSnake] = useState([
-    { x: 4, y: 4 },
-    { x: 3, y: 4 },
-    { x: 2, y: 4 },
-  ]);
-
-  const [snakeFood, setSnakeFood] = useState({
-    x: 7,
-    y: 7,
-  });
-
-  const [snakeDir, setSnakeDir] = useState({
-    x: 1,
-    y: 0,
-  });
-
-  const [snakeRunning, setSnakeRunning] = useState(false);
-
-  const [snakeMessage, setSnakeMessage] = useState(
-    "Stiskni START."
-  );
-
-  // =========================
-  // ULOŽENÉ CHATY
-  // =========================
-
+  const [showGames, setShowGames] = useState(false);
+  const [showChats, setShowChats] = useState(false);
   const [savedChats, setSavedChats] = useState([]);
-  const [chatsOpen, setChatsOpen] = useState(false);
+  const [game, setGame] = useState(null);
 
-  const flatListRef = useRef(null);
-
-  // =========================
-  // START
-  // =========================
+  const scrollRef = useRef(null);
 
   useEffect(() => {
     loadChats();
-
-    return () => {
-      if (reactionTimer.current) {
-        clearTimeout(reactionTimer.current);
-      }
-    };
   }, []);
 
-  useEffect(() => {
-    scrollToBottom();
-  }, [messages, loading]);
-
-  // =========================
-  // HAD
-  // =========================
-
-  useEffect(() => {
-    if (!snakeRunning || game !== "snake") {
-      return;
-    }
-
-    const timer = setInterval(() => {
-      setSnake((oldSnake) => {
-        const head = oldSnake[0];
-
-        const next = {
-          x: head.x + snakeDir.x,
-          y: head.y + snakeDir.y,
-        };
-
-        if (
-          next.x < 0 ||
-          next.x >= 10 ||
-          next.y < 0 ||
-          next.y >= 8 ||
-          oldSnake.some(
-            (p) =>
-              p.x === next.x &&
-              p.y === next.y
-          )
-        ) {
-          setSnakeRunning(false);
-          setSnakeMessage(
-            "💥 Konec! Stiskni START."
-          );
-
-          return oldSnake;
-        }
-
-        let nextSnake = [
-          next,
-          ...oldSnake,
-        ];
-
-        if (
-          next.x === snakeFood.x &&
-          next.y === snakeFood.y
-        ) {
-          setSnakeFood({
-            x: randomNumber(10),
-            y: randomNumber(8),
-          });
-        } else {
-          nextSnake =
-            nextSnake.slice(0, -1);
-        }
-
-        return nextSnake;
-      });
-    }, 220);
-
-    return () => clearInterval(timer);
-  }, [
-    snakeRunning,
-    snakeDir,
-    snakeFood,
-    game,
-  ]);
-
-  // =========================
-  // SCROLL
-  // =========================
-
-  const scrollToBottom = () => {
-    setTimeout(() => {
-      flatListRef.current?.scrollToEnd({
-        animated: true,
-      });
-    }, 100);
-  };
-
-  // =========================
-  // CHATY
-  // =========================
-
-  const loadChats = async () => {
+  async function loadChats() {
     try {
-      const raw =
-        await AsyncStorage.getItem(
-          CHATS_KEY
-        );
-
-      if (raw) {
-        setSavedChats(
-          JSON.parse(raw)
-        );
-      }
-    } catch (error) {
-      console.log(
-        "Načtení chatů:",
-        error
-      );
+      const saved = await AsyncStorage.getItem(CHATS_KEY);
+      if (saved) setSavedChats(JSON.parse(saved));
+    } catch (e) {
+      console.log(e);
     }
-  };
+  }
 
-  const chatTitle = (items) => {
-    const first = items.find(
-      (item) =>
-        !item.bot &&
-        item.text?.trim()
-    );
-
-    if (!first) {
-      return "Nový chat";
-    }
-
-    const text = cleanText(
-      first.text
-    ).replace(/^📷\s*/, "");
-
-    if (text.length > 36) {
-      return (
-        text.slice(0, 36) +
-        "…"
-      );
-    }
-
-    return text;
-  };
-
-  const saveChat = async (items) => {
+  async function saveCurrentChat(chatMessages) {
     try {
-      const chat = {
+      const useful = chatMessages.filter((m) => m.id !== "welcome");
+
+      if (!useful.length) return;
+
+      const firstUser = useful.find((m) => m.role === "user");
+      const title =
+        firstUser?.text?.slice(0, 35) ||
+        "Nový chat";
+
+      const newChat = {
         id: Date.now().toString(),
-        title: chatTitle(items),
-        messages: items,
-        updatedAt: Date.now(),
+        title,
+        date: new Date().toISOString(),
+        messages: chatMessages,
       };
 
-      const next = [
-        chat,
-        ...savedChats,
-      ].slice(0, 30);
+      const updated = [newChat, ...savedChats].slice(0, 30);
 
-      setSavedChats(next);
-
-      await AsyncStorage.setItem(
-        CHATS_KEY,
-        JSON.stringify(next)
-      );
-    } catch (error) {
-      console.log(
-        "Uložení chatu:",
-        error
-      );
+      setSavedChats(updated);
+      await AsyncStorage.setItem(CHATS_KEY, JSON.stringify(updated));
+    } catch (e) {
+      console.log(e);
     }
-  };
+  }
 
-  const openChat = (chat) => {
-    setMessages(chat.messages);
-    setChatsOpen(false);
-  };
+  async function pickImage(fromCamera = false) {
+    try {
+      let result;
 
-  const newChat = () => {
-    setMessages([
+      if (fromCamera) {
+        const permission =
+          await ImagePicker.requestCameraPermissionsAsync();
+
+        if (!permission.granted) {
+          Alert.alert("Rýp", "Potřebuju povolení ke kameře.");
+          return;
+        }
+
+        result = await ImagePicker.launchCameraAsync({
+          mediaTypes: ["images"],
+          allowsEditing: true,
+          quality: 0.8,
+          base64: true,
+        });
+      } else {
+        const permission =
+          await ImagePicker.requestMediaLibraryPermissionsAsync();
+
+        if (!permission.granted) {
+          Alert.alert("Rýp", "Potřebuju povolení ke galerii.");
+          return;
+        }
+
+        result = await ImagePicker.launchImageLibraryAsync({
+          mediaTypes: ["images"],
+          allowsEditing: true,
+          quality: 0.8,
+          base64: true,
+        });
+      }
+
+      if (result.canceled) return;
+
+      const asset = result.assets[0];
+
+      const edited = await ImageManipulator.manipulateAsync(
+        asset.uri,
+        [],
+        {
+          compress: 0.8,
+          format: ImageManipulator.SaveFormat.JPEG,
+          base64: true,
+        }
+      );
+
+      setSelectedImage({
+        uri: edited.uri,
+        base64: edited.base64,
+      });
+    } catch (e) {
+      Alert.alert("Rýp", "Fotku se nepodařilo načíst.");
+    }
+  }
+
+  async function rotateImage() {
+    if (!selectedImage) return;
+
+    const result = await ImageManipulator.manipulateAsync(
+      selectedImage.uri,
+      [{ rotate: 90 }],
       {
-        id: `${Date.now()}-welcome`,
-        text:
-          "Nový chat. Tak povídej. 😈",
-        bot: true,
-      },
-    ]);
-
-    setSelectedImage(null);
-    setChatsOpen(false);
-  };
-
-  // =========================
-  // MINIHRY
-  // =========================
-
-  const startGame = (selected) => {
-    setGame(selected);
-    setGameOpen(true);
-
-    if (selected === "number") {
-      setSecretNumber(
-        randomNumber(20) + 1
-      );
-
-      setGuess("");
-
-      setGameMessage(
-        "Myslím si číslo od 1 do 20. Hádej! 😈"
-      );
-    }
-
-    if (selected === "word") {
-      const words = [
-        "kočka",
-        "auto",
-        "houba",
-        "pizza",
-        "dům",
-        "pes",
-        "telefon",
-        "strom",
-      ];
-
-      const chosen =
-        words[
-          randomNumber(words.length)
-        ];
-
-      setWord(chosen);
-      setWordGuess("");
-
-      setWordMessage(
-        `Slovo má ${chosen.length} písmen. Začíná na „${chosen[0]}“.`
-      );
-    }
-
-    if (selected === "reaction") {
-      setReactionStarted(false);
-      setReactionReady(false);
-
-      setReactionMessage(
-        "Stiskni START."
-      );
-    }
-
-    if (selected === "rps") {
-      setRpsMessage(
-        "Vyber kámen, nůžky nebo papír."
-      );
-    }
-
-    if (selected === "memory") {
-      const seq =
-        Array.from(
-          { length: 3 },
-          () => randomNumber(10)
-        );
-
-      setMemorySequence(seq);
-      setMemoryInput("");
-      setMemoryRound(1);
-
-      setMemoryMessage(
-        `Zapamatuj si: ${seq.join("  ")}`
-      );
-
-      setTimeout(() => {
-        setMemoryMessage(
-          "Teď čísla napiš za sebou."
-        );
-      }, 1600);
-    }
-
-    if (selected === "target") {
-      setTargetPos({
-        x: randomNumber(85) + 5,
-        y: randomNumber(65) + 15,
-      });
-
-      setTargetMessage(
-        "Klepni na terč!"
-      );
-    }
-
-    if (selected === "snake") {
-      setSnake([
-        { x: 4, y: 4 },
-        { x: 3, y: 4 },
-        { x: 2, y: 4 },
-      ]);
-
-      setSnakeFood({
-        x: 7,
-        y: 6,
-      });
-
-      setSnakeDir({
-        x: 1,
-        y: 0,
-      });
-
-      setSnakeRunning(false);
-
-      setSnakeMessage(
-        "Stiskni START."
-      );
-    }
-  };
-
-  // =========================
-  // HÁDEJ ČÍSLO
-  // =========================
-
-  const makeGuess = () => {
-    const number = Number(
-      guess
+        compress: 0.8,
+        format: ImageManipulator.SaveFormat.JPEG,
+        base64: true,
+      }
     );
 
-    if (
-      !number ||
-      number < 1 ||
-      number > 20
-    ) {
-      setGameMessage(
-        "Zadej číslo od 1 do 20, šampióne. 😂"
-      );
-
-      return;
-    }
-
-    if (
-      number === secretNumber
-    ) {
-      const newScore =
-        score + 1;
-
-      setScore(newScore);
-
-      setGameMessage(
-        `🎉 Trefa! Číslo bylo ${secretNumber}. Skóre: ${newScore}`
-      );
-
-      setTimeout(() => {
-        setSecretNumber(
-          randomNumber(20) + 1
-        );
-
-        setGuess("");
-
-        setGameMessage(
-          "Nové číslo! Tak ukaž, jestli máš štěstí. 😈"
-        );
-      }, 900);
-
-      return;
-    }
-
-    setGameMessage(
-      number < secretNumber
-        ? "Moc málo! 🔽 Zkus větší číslo."
-        : "Moc vysoko! 🔼 Zkus menší číslo."
-    );
-
-    setGuess("");
-  };
-
-  // =========================
-  // HÁDEJ SLOVO
-  // =========================
-
-  const checkWord = () => {
-    if (
-      wordGuess
-        .trim()
-        .toLowerCase() === word
-    ) {
-      setWordMessage(
-        "🎉 Správně!"
-      );
-
-      setTimeout(() => {
-        startGame("word");
-      }, 800);
-    } else {
-      setWordMessage(
-        `Ne. Zkus to znovu. Začíná na „${word[0]}“.`
-      );
-    }
-  };
-
-  // =========================
-  // POSTŘEH
-  // =========================
-
-  const startReaction = () => {
-    setReactionStarted(true);
-    setReactionReady(false);
-
-    setReactionMessage(
-      "ČEKEJ…"
-    );
-
-    const delay =
-      1500 +
-      Math.random() * 3000;
-
-    reactionTimer.current =
-      setTimeout(() => {
-        setReactionReady(true);
-        setReactionStart(
-          Date.now()
-        );
-
-        setReactionMessage(
-          "TEĎ!!!"
-        );
-      }, delay);
-  };
-
-  const hitReaction = () => {
-    if (!reactionStarted) {
-      return;
-    }
-
-    if (!reactionReady) {
-      clearTimeout(
-        reactionTimer.current
-      );
-
-      setReactionStarted(false);
-
-      setReactionMessage(
-        "Moc brzo! 😂"
-      );
-
-      return;
-    }
-
-    const ms =
-      Date.now() -
-      reactionStart;
-
-    setReactionStarted(false);
-    setReactionReady(false);
-
-    setReactionMessage(
-      `⚡ ${ms} ms!`
-    );
-  };
-
-  // =========================
-  // KÁMEN NŮŽKY PAPÍR
-  // =========================
-
-  const playRps = (choice) => {
-    const choices = [
-      "kámen",
-      "nůžky",
-      "papír",
-    ];
-
-    const bot =
-      choices[
-        randomNumber(3)
-      ];
-
-    let result =
-      "Remíza!";
-
-    if (
-      (choice === "kámen" &&
-        bot === "nůžky") ||
-      (choice === "nůžky" &&
-        bot === "papír") ||
-      (choice === "papír" &&
-        bot === "kámen")
-    ) {
-      result =
-        "Vyhrál jsi! 😈";
-    } else if (
-      choice !== bot
-    ) {
-      result =
-        "Rýp vyhrál! 😂";
-    }
-
-    setRpsMessage(
-      `Rýp: ${bot}. ${result}`
-    );
-  };
-
-  // =========================
-  // PAMĚŤ
-  // =========================
-
-  const checkMemory = () => {
-    if (
-      memoryInput.replace(
-        /\s/g,
-        ""
-      ) ===
-      memorySequence.join("")
-    ) {
-      const nextLength =
-        memorySequence.length +
-        1;
-
-      const seq =
-        Array.from(
-          { length: nextLength },
-          () => randomNumber(10)
-        );
-
-      setMemoryRound(
-        memoryRound + 1
-      );
-
-      setMemorySequence(seq);
-      setMemoryInput("");
-
-      setMemoryMessage(
-        `Správně! Zapamatuj si: ${seq.join("  ")}`
-      );
-
-      setTimeout(() => {
-        setMemoryMessage(
-          "Teď čísla napiš za sebou."
-        );
-      }, 1400);
-    } else {
-      setMemoryMessage(
-        `Špatně. Správně bylo ${memorySequence.join("")}.`
-      );
-    }
-  };
-
-  // =========================
-  // TERČ
-  // =========================
-
-  const hitTarget = () => {
-    setTargetPos({
-      x: randomNumber(85) + 5,
-      y: randomNumber(65) + 15,
+    setSelectedImage({
+      uri: result.uri,
+      base64: result.base64,
     });
+  }
 
-    setTargetMessage(
-      "🎯 Trefa! Znovu!"
-    );
-  };
+  async function flipImage() {
+    if (!selectedImage) return;
 
-  // =========================
-  // HAD
-  // =========================
-
-  const startSnake = () => {
-    setSnake([
-      { x: 4, y: 4 },
-      { x: 3, y: 4 },
-      { x: 2, y: 4 },
-    ]);
-
-    setSnakeFood({
-      x: 7,
-      y: 6,
-    });
-
-    setSnakeDir({
-      x: 1,
-      y: 0,
-    });
-
-    setSnakeMessage(
-      "Chytej jídlo! 🐍"
-    );
-
-    setSnakeRunning(true);
-  };
-
-  const changeSnakeDirection = (
-    dir
-  ) => {
-    if (
-      dir.x === -snakeDir.x &&
-      dir.y === -snakeDir.y
-    ) {
-      return;
-    }
-
-    setSnakeDir(dir);
-  };
-
-  // =========================
-  // GALERIE
-  // =========================
-
-  const pickImage = async () => {
-    try {
-      const permission =
-        await ImagePicker.requestMediaLibraryPermissionsAsync();
-
-      if (!permission.granted) {
-        Alert.alert(
-          "Přístup ke galerii",
-          "Rýp potřebuje přístup k fotografiím."
-        );
-
-        return;
-      }
-
-      const result =
-        await ImagePicker.launchImageLibraryAsync(
-          {
-            mediaTypes: ["images"],
-            allowsEditing: true,
-            quality: 0.8,
-            base64: true,
-          }
-        );
-
-      if (
-        !result.canceled &&
-        result.assets?.[0]
-      ) {
-        setSelectedImage(
-          result.assets[0]
-        );
-      }
-    } catch (error) {
-      console.log(
-        "Galerie:",
-        error
-      );
-
-      Alert.alert(
-        "Chyba",
-        "Galerii se nepodařilo otevřít."
-      );
-    }
-  };
-
-  // =========================
-  // FOŤÁK
-  // =========================
-
-  const takePhoto = async () => {
-    try {
-      const permission =
-        await ImagePicker.requestCameraPermissionsAsync();
-
-      if (!permission.granted) {
-        Alert.alert(
-          "Přístup ke kameře",
-          "Rýp potřebuje přístup ke kameře."
-        );
-
-        return;
-      }
-
-      const result =
-        await ImagePicker.launchCameraAsync(
-          {
-            allowsEditing: true,
-            quality: 0.8,
-            base64: true,
-          }
-        );
-
-      if (
-        !result.canceled &&
-        result.assets?.[0]
-      ) {
-        setSelectedImage(
-          result.assets[0]
-        );
-      }
-    } catch (error) {
-      console.log(
-        "Foťák:",
-        error
-      );
-
-      Alert.alert(
-        "Chyba",
-        "Foťák se nepodařilo otevřít."
-      );
-    }
-  };
-
-  // =========================
-  // VÝBĚR OBRÁZKU
-  // =========================
-
-  const chooseImage = () => {
-    Alert.alert(
-      "Rýp 📷",
-      "Odkud chceš obrázek?",
+    const result = await ImageManipulator.manipulateAsync(
+      selectedImage.uri,
       [
         {
-          text: "📷 Foťák",
-          onPress: takePhoto,
+          flip: ImageManipulator.FlipType.Horizontal,
         },
-        {
-          text: "🖼️ Galerie",
-          onPress: pickImage,
-        },
-        {
-          text: "Zrušit",
-          style: "cancel",
-        },
-      ]
+      ],
+      {
+        compress: 0.8,
+        format: ImageManipulator.SaveFormat.JPEG,
+        base64: true,
+      }
     );
-  };
 
-  // =========================
-  // OTOČENÍ OBRÁZKU
-  // =========================
+    setSelectedImage({
+      uri: result.uri,
+      base64: result.base64,
+    });
+  }
 
-  const rotateImage = async () => {
-    if (!selectedImage?.uri) {
-      return;
-    }
+  async function sendMessage() {
+    if ((!input.trim() && !selectedImage) || loading) return;
 
-    try {
-      const result =
-        await ImageManipulator.manipulateAsync(
-          selectedImage.uri,
-          [
-            {
-              rotate: 90,
-            },
-          ],
-          {
-            compress: 0.8,
-            format:
-              ImageManipulator.SaveFormat
-                .JPEG,
-            base64: true,
-          }
-        );
-
-      setSelectedImage({
-        ...selectedImage,
-        uri: result.uri,
-        base64: result.base64,
-        mimeType: "image/jpeg",
-      });
-    } catch (error) {
-      Alert.alert(
-        "Chyba",
-        "Obrázek se nepodařilo upravit."
-      );
-    }
-  };
-
-  // =========================
-  // PŘEKLOPENÍ OBRÁZKU
-  // =========================
-
-  const flipImage = async () => {
-    if (!selectedImage?.uri) {
-      return;
-    }
-
-    try {
-      const result =
-        await ImageManipulator.manipulateAsync(
-          selectedImage.uri,
-          [
-            {
-              flip:
-                ImageManipulator
-                  .FlipType
-                  .Horizontal,
-            },
-          ],
-          {
-            compress: 0.8,
-            format:
-              ImageManipulator.SaveFormat
-                .JPEG,
-            base64: true,
-          }
-        );
-
-      setSelectedImage({
-        ...selectedImage,
-        uri: result.uri,
-        base64: result.base64,
-        mimeType: "image/jpeg",
-      });
-    } catch (error) {
-      Alert.alert(
-        "Chyba",
-        "Obrázek se nepodařilo upravit."
-      );
-    }
-  };
-
-  // =========================
-  // ODESLÁNÍ
-  // =========================
-
-  const sendMessage = async () => {
-    if (
-      (!message.trim() &&
-        !selectedImage) ||
-      loading
-    ) {
-      return;
-    }
-
-    const userText =
-      message.trim() ||
-      "Podívej se na tenhle obrázek.";
-
-    const historyForServer =
-      messages
-        .slice(-12)
-        .map((item) => ({
-          role: item.bot
-            ? "assistant"
-            : "user",
-          content: cleanText(
-            item.text
-          ),
-        }));
-
-    const imageToSend =
-      selectedImage;
+    const userText = input.trim();
 
     const userMessage = {
-      id: `${Date.now()}-user`,
-      text: imageToSend
-        ? `📷 ${userText}`
-        : userText,
-      bot: false,
+      id: Date.now().toString(),
+      role: "user",
+      text: userText || "Podívej se na tuhle fotku.",
+      image: selectedImage?.uri || null,
     };
 
-    const updatedMessages = [
-      ...messages,
-      userMessage,
-    ];
+    const newMessages = [...messages, userMessage];
 
-    setMessages(
-      updatedMessages
-    );
-
-    setMessage("");
+    setMessages(newMessages);
+    setInput("");
     setSelectedImage(null);
     setLoading(true);
 
     try {
-      const response =
-        await fetch(
-          SERVER_URL,
-          {
-            method: "POST",
+      const history = newMessages.slice(-12).map((m) => ({
+        role: m.role,
+        content: m.text || "",
+      }));
 
-            headers: {
-              "Content-Type":
-                "application/json",
-            },
+      const response = await fetch(SERVER_URL, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          message: userText || "Podívej se na obrázek.",
+          image: userMessage.image
+            ? `data:image/jpeg;base64,${await uriToBase64(userMessage.image)}`
+            : null,
+          history,
+        }),
+      });
 
-            body: JSON.stringify({
-              message:
-                userText,
+      const data = await response.json();
 
-              history:
-                historyForServer,
+      const answer =
+        data.reply ||
+        data.message ||
+        "Ty vole, nějak jsem se zasekl. 😅";
 
-              image: imageToSend
-                ? {
-                    base64:
-                      imageToSend.base64,
+      const assistantMessage = {
+        id: Date.now().toString() + "_bot",
+        role: "assistant",
+        text: cleanText(answer),
+      };
 
-                    mimeType:
-                      imageToSend.mimeType ||
-                      "image/jpeg",
-                  }
-                : null,
-            }),
-          }
-        );
+      const finalMessages = [...newMessages, assistantMessage];
 
-      if (!response.ok) {
-        throw new Error(
-          `Server returned ${response.status}`
-        );
+      setMessages(finalMessages);
+
+      // Uloží pouze aktuální konverzaci jako jednu položku.
+      await updateSavedChat(finalMessages);
+    } catch (e) {
+      console.log(e);
+
+      setMessages((prev) => [
+        ...prev,
+        {
+          id: Date.now().toString(),
+          role: "assistant",
+          text: "Server zrovna chrápe. Zkus to za chvíli. 😂",
+        },
+      ]);
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  async function uriToBase64(uri) {
+    try {
+      const result = await ImageManipulator.manipulateAsync(
+        uri,
+        [],
+        {
+          compress: 0.8,
+          format: ImageManipulator.SaveFormat.JPEG,
+          base64: true,
+        }
+      );
+
+      return result.base64 || "";
+    } catch {
+      return "";
+    }
+  }
+
+  async function updateSavedChat(chatMessages) {
+    try {
+      const firstUser = chatMessages.find(
+        (m) => m.role === "user"
+      );
+
+      if (!firstUser) return;
+
+      const title =
+        firstUser.text?.slice(0, 35) || "Nový chat";
+
+      const existing = [...savedChats];
+
+      if (
+        existing.length > 0 &&
+        existing[0].messages?.some(
+          (m) => m.id === chatMessages[0].id
+        )
+      ) {
+        existing[0] = {
+          ...existing[0],
+          title,
+          messages: chatMessages,
+          date: new Date().toISOString(),
+        };
+      } else {
+        existing.unshift({
+          id: Date.now().toString(),
+          title,
+          messages: chatMessages,
+          date: new Date().toISOString(),
+        });
       }
 
-      const data =
-        await response.json();
+      const limited = existing.slice(0, 30);
 
-      const finalMessages = [
-        ...updatedMessages,
+      setSavedChats(limited);
+      await AsyncStorage.setItem(
+        CHATS_KEY,
+        JSON.stringify(limited)
+      );
+    } catch (e) {
+      console.log(e);
+    }
+  }
 
-        {
-          id: `${Date.now()}-bot`,
-          text:
-            data.reply ||
-            "Rýp nic nevrátil. 🤨",
+  function openChat(chat) {
+    setMessages(chat.messages);
+    setShowChats(false);
+  }
+
+  async function deleteChat(id) {
+    const updated = savedChats.filter((chat) => chat.id !== id);
+    setSavedChats(updated);
+    await AsyncStorage.setItem(
+      CHATS_KEY,
+      JSON.stringify(updated)
+    );
+  }
+
+  function renderMessage({ item }) {
+    return (
+      <View
+        style={[
+          styles.message,
+          item.role === "user"
+            ? styles.userMessage
+            : styles.botMessage,
+        ]}
+      >
+        {item.image && (
+          <Image
+            source={{ uri: item.image }}
+            style={styles.messageImage}
+          />
+        )}
+
+        <Text style={styles.messageText}>
+          {item.text}
+        </Text>
+      </View>
+    );
+  }
+
+  function playGame(type) {
+    setGame(type);
+    setShowGames(false);
+  }
+
+  function GameScreen() {
+    const [number, setNumber] = useState(
+      Math.floor(Math.random() * 20) + 1
+    );
+    const [guess, setGuess] = useState("");
+    const [result, setResult] = useState("");
+
+    const [word, setWord] = useState("");
+    const [wordResult, setWordResult] = useState("");
+
+    const [reaction, setReaction] = useState("Čekej...");
+    const reactionTimer = useRef(null);
+
+    const [rpsResult, setRpsResult] = useState("");
+    const [target, setTarget] = useState(
+      Math.floor(Math.random() * 10) + 1
+    );
+    const [targetGuess, setTargetGuess] = useState("");
+    const [targetResult, setTargetResult] = useState("");
+
+    function resetNumber() {
+      setNumber(Math.floor(Math.random() * 20) + 1);
+      setGuess("");
+      setResult("");
+    }
+
+    function checkNumber() {
+      const n = Number(guess);
+
+      if (!n || n < 1 || n > 20) {
+        setResult("Napiš číslo 1–20.");
+        return;
+      }
+
+      if (n === number) {
+        setResult("🎉 Trefa! Jsi dobrej.");
+      } else if (n < number) {
+        setResult("⬆️ Moc málo.");
+      } else {
+        setResult("⬇️ Moc hodně.");
+      }
+    }
+
+    function startReaction() {
+      setReaction("ČEKEJ...");
+      const delay = 1500 + Math.random() * 3000;
+
+      reactionTimer.current = setTimeout(() => {
+        setReaction("TEĎ!");
+      }, delay);
+    }
+
+    function rps(choice) {
+      const choices = ["kámen", "nůžky", "papír"];
+      const bot =
+        choices[Math.floor(Math.random() * choices.length)];
+
+      if (choice === bot) {
+        setRpsResult(`Já: ${bot}. Remíza 😁`);
+      } else if (
+        (choice === "kámen" && bot === "nůžky") ||
+        (choice === "nůžky" && bot === "papír") ||
+        (choice === "papír" && bot === "kámen")
+      ) {
+        setRpsResult(`Já: ${bot}. Vyhrál jsi! 😎`);
+      } else {
+        setRpsResult(`Já: ${bot}. Dostal jsi na prdel. 😂`);
+      }
+    }
+
+    function checkTarget() {
+      const n = Number(targetGuess);
+
+      if (n === target) {
+        setTargetResult("🎯 Zásah!");
+      } else {
+        setTargetResult(
+          n < target ? "⬆️ Zkus vyšší." : "⬇️ Zkus nižší."
+        );
+      }
+    }
+
+    return (
+      <View style={styles.gameBox}>
+        {game === "number" && (
+          <>
+            <Text style={styles.gameTitle}>🔢 Hádej číslo</Text>
+            <Text style={styles.gameText}>
+              Myslím si číslo od 1 do 20.
+            </Text>
+
+            <TextInput
+              value={guess}
+              onChangeText={setGuess}
+              keyboardType="numeric"
+              placeholder="Tvoje číslo"
+              placeholderTextColor="#777"
+              style={styles.gameInput}
+            />
+
+            <TouchableOpacity
+              style={styles.gameButton}
+              onPress={checkNumber}
+            >
+              <Text style={styles.gameButtonText}>
+                Hádat
+              </Text>
+            </TouchableOpacity>
+
+            <Text style={styles.result}>{result}</Text>
+
+            <TouchableOpacity onPress={resetNumber}>
+              <Text style={styles.link}>Nová hra</Text>
+            </TouchableOpacity>
+          </>
+        )}
+
+        {game === "word" && (
+          <>
+            <Text style={styles.gameTitle}>🔤 Slovo</Text>
+            <Text style={styles.gameText}>
+              Napiš slovo začínající na písmeno R.
+            </Text>
+
+            <TextInput
+              value={word}
+              onChangeText={setWord}
+              placeholder="Tvoje slovo"
+              placeholderTextColor="#777"
+              style={styles.gameInput}
+            />
+
+            <TouchableOpacity
+              style={styles.gameButton}
+              onPress={() =>
+                setWordResult(
+                  word.toLowerCase().startsWith("r")
+                    ? "✅ Dobře!"
+                    : "❌ To nezačíná na R."
+                )
+              }
+            >
+              <Text style={styles.gameButtonText}>
+                Zkontrolovat
+              </Text>
+            </TouchableOpacity>
+
+            <Text style={styles.result}>{wordResult}</Text>
+          </>
+        )}
+
+        {game === "reaction" && (
+          <>
+            <Text style={styles.gameTitle}>
+              ⚡ Reakce
+            </Text>
+
+            <TouchableOpacity
+              style={styles.reactionButton}
+              onPress={startReaction}
+            >
+              <Text style={styles.reactionText}>
+                {reaction}
+              </Text>
+            </TouchableOpacity>
+
+            <Text style={styles.gameText}>
+              Klikni až když se objeví TEĎ!
+            </Text>
+          </>
+        )}
+
+        {game === "rps" && (
+          <>
+            <Text style={styles.gameTitle}>
+              ✊ Kámen nůžky papír
+            </Text>
+
+            <View style={styles.row}>
+              {["kámen", "nůžky", "papír"].map((x) => (
+                <TouchableOpacity
+                  key={x}
+                  style={styles.smallButton}
+                  onPress={() => rps(x)}
+                >
+                  <Text style={styles.smallButtonText}>
+                    {x}
+                  </Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+
+            <Text style={styles.result}>
+              {rpsResult}
+            </Text>
+          </>
+        )}
+
+        {game === "memory" && (
+          <>
+            <Text style={styles.gameTitle}>
+              🧠 Paměť
+            </Text>
+
+            <Text style={styles.bigEmoji}>
+              🐱 🐶 🦊 🐸 🐵
+            </Text>
+
+            <Text style={styles.gameText}>
+              Zapamatuj si pořadí. Za chvíli ho zkus napsat.
+            </Text>
+
+            <TouchableOpacity
+              style={styles.gameButton}
+              onPress={() =>
+                Alert.alert(
+                  "Rýp",
+                  "Pořadí bylo: 🐱 🐶 🦊 🐸 🐵"
+                )
+              }
+            >
+              <Text style={styles.gameButtonText}>
+                Zobrazit výsledek
+              </Text>
+            </TouchableOpacity>
+          </>
+        )}
+
+        {game === "target" && (
+          <>
+            <Text style={styles.gameTitle}>
+              🎯 Terč
+            </Text>
+
+            <Text style={styles.gameText}>
+              Hádej číslo 1–10.
+            </Text>
+
+            <TextInput
+              value={targetGuess}
+              onChangeText={setTargetGuess}
+              keyboardType="numeric"
+              placeholder="Tip"
+              placeholderTextColor="#777"
+              style={styles.gameInput}
+            />
+
+            <TouchableOpacity
+              style={styles.gameButton}
+              onPress={checkTarget}
+            >
+              <Text style={styles.gameButtonText}>
+                Střílet
+              </Text>
+            </TouchableOpacity>
+
+            <Text style={styles.result}>
+              {targetResult}
+            </Text>
+          </>
+        )}
+
+        {game === "snake" && (
+          <>
+            <Text style={styles.gameTitle}>
+              🐍 Had
+            </Text>
+
+            <Text style={styles.gameText}>
+              Minihra s hadem bude dál rozšiřovaná.
+            </Text>
+
+            <Text style={styles.bigEmoji}>
+              🐍🍎
+            </Text>
+          </>
+        )}
+
+        <TouchableOpacity
+          style={styles.closeButton}
+          onPress={() => setGame(null)}
+        >
+          <Text style={styles.closeText}>
+            Zavřít hru
+          </Text>
+        </TouchableOpacity>
+      </View>
+    );
+  }
+
+  return (
+    <View style={styles.container}>
+      <View style={styles.header}>
+        <View style={styles.headerLeft}>
+          <Image
+            source={require("./file_00000000e44c81f4b86b60e21106fc88.png")}
+            style={styles.avatar}
+          />
+
+          <Text style={styles.title}>Rýp</Text>
+        </View>
+
+        <View style={styles.headerButtons}>
+          <TouchableOpacity
+            onPress={() => setShowChats(true)}
+            style={styles.iconButton}
+          >
+            <Text style={styles.iconText}>💬</Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            onPress={() => setShowGames(true)}
+            style={styles.iconButton}
+          >
+            <Text style={styles.iconText}>🎮</Text>
+          </TouchableOpacity>
+        </View>
+      </View>
+
+      <FlatList
+        ref={scrollRef}
+        data={messages}
+        keyExtractor={(item) => item.id}
+        renderItem={renderMessage}
+        contentContainerStyle={styles.messages}
+        onContentSizeChange={() =>
+          scrollRef.current?.scrollToEnd({
+            animated: true,
+          })
+        }
+      />
+
+      {selectedImage && (
+        <View style={styles.previewBox}>
+          <Image
+            source={{ uri: selectedImage.uri }}
+            style={styles.preview}
+          />
+
+          <View style={styles.editRow}>
+            <TouchableOpacity
+              style={styles.editButton}
+              onPress={rotateImage}
+            >
+              <Text style={styles.editText}>↻</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={styles.editButton}
+              onPress={flipImage}
+            >
+              <Text style={styles.editText}>↔</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={styles.editButton}
+              onPress={() => setSelectedImage(null)}
+            >
+              <Text style={styles.editText}>✕</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      )}
+
+      <View style={styles.inputRow}>
+        <TouchableOpacity
+          style={styles.photoButton}
+          onPress={() =>
+            Alert.alert(
+              "Fotka",
+              "Vyber zdroj",
+              [
+                {
+                  text: "Galerie",
+                  onPress: () => pickImage(false),
+                },
+                {
+                  text: "Fotoaparát",
+                  onPress: () => pickImage(true),
+                },
+                {
+                  text: "Zrušit",
+                  style: "cancel",
+                },
+              ]
+            )
+          }
+        >
+          <Text style={styles.photoText}>📷</Text>
+        </TouchableOpacity>
+
+        <TextInput
+          value={input}
+          onChangeText={setInput}
+          placeholder="Napiš Rýpovi..."
+          placeholderTextColor="#777"
+          multiline
+          style={styles.input}
+        />
+
+        <TouchableOpacity
+          style={styles.sendButton}
+          onPress={sendMessage}
+          disabled={loading}
+        >
+          <Text style={styles.sendText}>
+            {loading ? "…" : "➤"}
+          </Text>
+        </TouchableOpacity>
+      </View>
+
+      <Modal
+        visible={showGames}
+        transparent
+        animationType="slide"
+        onRequestClose={() => setShowGames(false)}
+      >
+        <View style={styles.modal}>
+          <View style={styles.modalBox}>
+            <Text style={styles.modalTitle}>
+              🎮 Rýpovy hry
+            </Text>
+
+            {[
+              ["number", "🔢 Hádej číslo"],
+              ["word", "🔤 Slovo"],
+              ["reaction", "⚡ Reakce"],
+              ["rps", "✊ Kámen nůžky papír"],
+              ["memory", "🧠 Paměť"],
+              ["target", "🎯 Terč"],
+              ["snake", "🐍 Had"],
+            ].map(([id, title]) => (
+              <TouchableOpacity
+                key={id}
+                style={styles.menuButton}
+                onPress={() => playGame(id)}
+              >
+   

@@ -4,10 +4,10 @@
     "slug": "ryp",
     "version": "1.0.0",
     "orientation": "portrait",
-    "icon": "./file_00000000bf8881f4bf38d7b531a7d6eb.png",
+    "icon": "./file_00000000e44c81f4b86b60e21106fc88.png",
     "android": {
       "package": "com.mara.rypai",
-      "versionCode": 3
+      "versionCode": 4
     },
     "extra": {
       "eas": {

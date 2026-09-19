@@ -239,7 +239,10 @@ function ReactionGame() {
       return;
     }
 
-    setMessage(`${Date.now() - startedAt} ms ⚡`);
+    const reaction = Date.now() - startedAt;
+
+    setMessage(`⚡ ${reaction} ms`);
+
     setRunning(false);
   };
 
@@ -247,14 +250,19 @@ function ReactionGame() {
     <View style={styles.gameCard}>
       <Text style={styles.gameTitle}>⚡ Reakce</Text>
 
-      <Text style={styles.gameText}>{message}</Text>
+      <Text style={styles.gameText}>
+        {message}
+      </Text>
 
       <TouchableOpacity
-        style={styles.bigGameButton}
+        style={[
+          styles.reactionButton,
+          startedAt && styles.reactionReady,
+        ]}
         onPress={tap}
       >
-        <Text style={styles.bigGameButtonText}>
-          {running ? "KLIKNI!" : "START"}
+        <Text style={styles.reactionButtonText}>
+          {startedAt ? "TEĎ!" : "START"}
         </Text>
       </TouchableOpacity>
     </View>
@@ -262,25 +270,28 @@ function ReactionGame() {
 }
 
 function RpsGame() {
-  const [result, setResult] = useState("Vyber si 😈");
+  const [result, setResult] = useState(
+    "Vyber si 😈"
+  );
+
+  const choices = ["✊", "✌️", "✋"];
 
   const play = (player) => {
-    const options = ["kámen", "nůžky", "papír"];
-    const bot =
-      options[Math.floor(Math.random() * options.length)];
+    const computer =
+      choices[Math.floor(Math.random() * choices.length)];
 
-    if (player === bot) {
-      setResult(`Já: ${bot}. Remíza 😂`);
+    if (player === computer) {
+      setResult(`Já: ${computer} — Remíza 😂`);
       return;
     }
 
     const win =
-      (player === "kámen" && bot === "nůžky") ||
-      (player === "nůžky" && bot === "papír") ||
-      (player === "papír" && bot === "kámen");
+      (player === "✊" && computer === "✌️") ||
+      (player === "✌️" && computer === "✋") ||
+      (player === "✋" && computer === "✊");
 
     setResult(
-      `Já: ${bot}. ${
+      `Já: ${computer} — ${
         win ? "Vyhrál jsi 😏" : "Prohrál jsi 😂"
       }`
     );
@@ -294,87 +305,98 @@ function RpsGame() {
 
       <Text style={styles.gameText}>{result}</Text>
 
-      <View style={styles.choiceRow}>
-        <TouchableOpacity
-          style={styles.choiceButton}
-          onPress={() => play("kámen")}
-        >
-          <Text style={styles.choiceText}>✊</Text>
-        </TouchableOpacity>
-
-        <TouchableOpacity
-          style={styles.choiceButton}
-          onPress={() => play("nůžky")}
-        >
-          <Text style={styles.choiceText}>✌️</Text>
-        </TouchableOpacity>
-
-        <TouchableOpacity
-          style={styles.choiceButton}
-          onPress={() => play("papír")}
-        >
-          <Text style={styles.choiceText}>✋</Text>
-        </TouchableOpacity>
+      <View style={styles.rpsRow}>
+        {choices.map((choice) => (
+          <TouchableOpacity
+            key={choice}
+            style={styles.rpsButton}
+            onPress={() => play(choice)}
+          >
+            <Text style={styles.rpsEmoji}>
+              {choice}
+            </Text>
+          </TouchableOpacity>
+        ))}
       </View>
     </View>
   );
 }
 
 function MemoryGame() {
-  const symbols = ["🍎", "🚗", "🐱", "⚽", "🍕", "🚀"];
+  const symbols = [
+    "🍎",
+    "🚗",
+    "🐱",
+    "⚽",
+    "🍕",
+    "🚀",
+  ];
 
-  const [cards, setCards] = useState([]);
-  const [open, setOpen] = useState([]);
-  const [matched, setMatched] = useState([]);
-
-  const newGame = () => {
-    const deck = [...symbols, ...symbols]
+  const makeCards = () =>
+    [...symbols, ...symbols]
       .sort(() => Math.random() - 0.5)
       .map((symbol, index) => ({
         id: index,
         symbol,
+        open: false,
+        matched: false,
       }));
 
-    setCards(deck);
-    setOpen([]);
-    setMatched([]);
+  const [cards, setCards] = useState(makeCards());
+  const [selected, setSelected] = useState([]);
+
+  const reset = () => {
+    setCards(makeCards());
+    setSelected([]);
   };
 
-  useEffect(() => {
-    newGame();
-  }, []);
-
-  const pressCard = (card) => {
+  const pressCard = (index) => {
     if (
-      open.includes(card.id) ||
-      matched.includes(card.id) ||
-      open.length >= 2
+      selected.length === 2 ||
+      cards[index].open ||
+      cards[index].matched
     ) {
       return;
     }
 
-    const next = [...open, card.id];
-    setOpen(next);
+    const nextCards = [...cards];
 
-    if (next.length === 2) {
-      const first = cards.find(
-        (c) => c.id === next[0]
-      );
+    nextCards[index].open = true;
 
-      const second = cards.find(
-        (c) => c.id === next[1]
-      );
+    const nextSelected = [...selected, index];
 
-      if (first && second && first.symbol === second.symbol) {
-        setMatched((m) => [
-          ...m,
-          first.id,
-          second.id,
-        ]);
-        setOpen([]);
+    setCards(nextCards);
+    setSelected(nextSelected);
+
+    if (nextSelected.length === 2) {
+      const [a, b] = nextSelected;
+
+      if (
+        nextCards[a].symbol ===
+        nextCards[b].symbol
+      ) {
+        setTimeout(() => {
+          setCards((current) =>
+            current.map((card, i) =>
+              i === a || i === b
+                ? { ...card, matched: true }
+                : card
+            )
+          );
+
+          setSelected([]);
+        }, 400);
       } else {
         setTimeout(() => {
-          setOpen([]);
+          setCards((current) =>
+            current.map((card, i) =>
+              i === a || i === b
+                ? { ...card, open: false }
+                : card
+            )
+          );
+
+          setSelected([]);
         }, 700);
       }
     }
@@ -385,28 +407,24 @@ function MemoryGame() {
       <Text style={styles.gameTitle}>🧠 Pexeso</Text>
 
       <View style={styles.memoryGrid}>
-        {cards.map((card) => {
-          const visible =
-            open.includes(card.id) ||
-            matched.includes(card.id);
-
-          return (
-            <TouchableOpacity
-              key={card.id}
-              style={styles.memoryCard}
-              onPress={() => pressCard(card)}
-            >
-              <Text style={styles.memoryText}>
-                {visible ? card.symbol : "?"}
-              </Text>
-            </TouchableOpacity>
-          );
-        })}
+        {cards.map((card, index) => (
+          <TouchableOpacity
+            key={card.id}
+            style={styles.memoryCard}
+            onPress={() => pressCard(index)}
+          >
+            <Text style={styles.memoryText}>
+              {card.open || card.matched
+                ? card.symbol
+                : "❓"}
+            </Text>
+          </TouchableOpacity>
+        ))}
       </View>
 
       <TouchableOpacity
         style={styles.secondaryButton}
-        onPress={newGame}
+        onPress={reset}
       >
         <Text style={styles.secondaryButtonText}>
           NOVÁ HRA
@@ -418,18 +436,17 @@ function MemoryGame() {
 
 function TargetGame() {
   const [score, setScore] = useState(0);
-
   const [position, setPosition] = useState({
-    top: 80,
-    left: 90,
+    top: 40,
+    left: 40,
   });
 
   const hit = () => {
     setScore((s) => s + 1);
 
     setPosition({
-      top: 30 + Math.random() * 180,
-      left: 20 + Math.random() * 210,
+      top: Math.random() * 180,
+      left: Math.random() * 180,
     });
   };
 
@@ -455,87 +472,179 @@ function TargetGame() {
           <Text style={styles.targetText}>🎯</Text>
         </TouchableOpacity>
       </View>
+
+      <TouchableOpacity
+        style={styles.secondaryButton}
+        onPress={() => {
+          setScore(0);
+          setPosition({
+            top: 40,
+            left: 40,
+          });
+        }}
+      >
+        <Text style={styles.secondaryButtonText}>
+          RESET
+        </Text>
+      </TouchableOpacity>
     </View>
   );
 }
 
 function SnakeGame() {
-  const [score, setScore] = useState(0);
-  const [direction, setDirection] =
-    useState("doprava");
+  const [snake, setSnake] = useState([
+    { x: 4, y: 4 },
+    { x: 3, y: 4 },
+    { x: 2, y: 4 },
+  ]);
 
-  const move = (dir) => {
-    setDirection(dir);
-    setScore((s) => s + 1);
+  const [direction, setDirection] = useState({
+    x: 1,
+    y: 0,
+  });
+
+  const [food, setFood] = useState({
+    x: 7,
+    y: 7,
+  });
+
+  useEffect(() => {
+    const timer = setInterval(() => {
+      setSnake((current) => {
+        const head = current[0];
+
+        const newHead = {
+          x: head.x + direction.x,
+          y: head.y + direction.y,
+        };
+
+        if (
+          newHead.x < 0 ||
+          newHead.x > 9 ||
+          newHead.y < 0 ||
+          newHead.y > 9
+        ) {
+          return [
+            { x: 4, y: 4 },
+            { x: 3, y: 4 },
+            { x: 2, y: 4 },
+          ];
+        }
+
+        const ate =
+          newHead.x === food.x &&
+          newHead.y === food.y;
+
+        const next = [
+          newHead,
+          ...current,
+        ];
+
+        if (!ate) {
+          next.pop();
+        } else {
+          setFood({
+            x: Math.floor(Math.random() * 10),
+            y: Math.floor(Math.random() * 10),
+          });
+        }
+
+        return next;
+      });
+    }, 180);
+
+    return () => clearInterval(timer);
+  }, [direction, food]);
+
+  const cell = (x, y) => {
+    const isSnake = snake.some(
+      (part) =>
+        part.x === x && part.y === y
+    );
+
+    const isFood =
+      food.x === x && food.y === y;
+
+    return (
+      <View
+        key={`${x}-${y}`}
+        style={[
+          styles.snakeCell,
+          isSnake && styles.snakeBody,
+          isFood && styles.snakeFood,
+        ]}
+      />
+    );
   };
 
   return (
     <View style={styles.gameCard}>
       <Text style={styles.gameTitle}>🐍 Had</Text>
 
-      <Text style={styles.gameText}>
-        Směr: {direction} · Skóre: {score}
-      </Text>
-
       <View style={styles.snakeBoard}>
-        <Text style={styles.snakeEmoji}>🐍</Text>
+        {Array.from({ length: 10 }).map((_, y) =>
+          Array.from({ length: 10 }).map((_, x) =>
+            cell(x, y)
+          )
+        )}
       </View>
 
-      <View style={styles.directionGrid}>
+      <View style={styles.controls}>
         <TouchableOpacity
-          style={styles.directionButton}
-          onPress={() => move("nahoru")}
+          style={styles.arrowButton}
+          onPress={() =>
+            setDirection({ x: 0, y: -1 })
+          }
         >
-          <Text style={styles.directionText}>⬆️</Text>
+          <Text style={styles.arrowText}>▲</Text>
         </TouchableOpacity>
 
-        <TouchableOpacity
-          style={styles.directionButton}
-          onPress={() => move("doleva")}
-        >
-          <Text style={styles.directionText}>⬅️</Text>
-        </TouchableOpacity>
+        <View style={styles.controlRow}>
+          <TouchableOpacity
+            style={styles.arrowButton}
+            onPress={() =>
+              setDirection({ x: -1, y: 0 })
+            }
+          >
+            <Text style={styles.arrowText}>◀</Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={styles.arrowButton}
+            onPress={() =>
+              setDirection({ x: 1, y: 0 })
+            }
+          >
+            <Text style={styles.arrowText}>▶</Text>
+          </TouchableOpacity>
+        </View>
 
         <TouchableOpacity
-          style={styles.directionButton}
-          onPress={() => move("dolů")}
+          style={styles.arrowButton}
+          onPress={() =>
+            setDirection({ x: 0, y: 1 })
+          }
         >
-          <Text style={styles.directionText}>⬇️</Text>
-        </TouchableOpacity>
-
-        <TouchableOpacity
-          style={styles.directionButton}
-          onPress={() => move("doprava")}
-        >
-          <Text style={styles.directionText}>➡️</Text>
+          <Text style={styles.arrowText}>▼</Text>
         </TouchableOpacity>
       </View>
     </View>
   );
-}
-
-/* =========================
-   GAME MENU
-========================= */
-
-function GamesMenu({ visible, onClose }) {
+          }function GamesMenu({ visible, onClose }) {
   const [game, setGame] = useState("number");
 
   const games = [
-    ["number", "🎯 Číslo"],
-    ["word", "🔤 Slovo"],
-    ["reaction", "⚡ Reakce"],
-    ["rps", "✊ RPS"],
-    ["memory", "🧠 Pexeso"],
-    ["target", "🎯 Terč"],
-    ["snake", "🐍 Had"],
+    { id: "number", label: "🎯 Číslo" },
+    { id: "word", label: "🔤 Slovo" },
+    { id: "reaction", label: "⚡ Reakce" },
+    { id: "rps", label: "✊ KNP" },
+    { id: "memory", label: "🧠 Pexeso" },
+    { id: "target", label: "🎯 Terč" },
+    { id: "snake", label: "🐍 Had" },
   ];
 
   const renderGame = () => {
     switch (game) {
-      case "number":
-        return <NumberGame />;
-
       case "word":
         return <WordGame />;
 
@@ -555,60 +664,62 @@ function GamesMenu({ visible, onClose }) {
         return <SnakeGame />;
 
       default:
-        return null;
+        return <NumberGame />;
     }
   };
 
   return (
     <Modal
       visible={visible}
-      animationType="slide"
       transparent
+      animationType="slide"
       onRequestClose={onClose}
     >
       <View style={styles.modalOverlay}>
         <View style={styles.gamesModal}>
-          <View style={styles.modalHeader}>
-            <Text style={styles.modalTitle}>
+          <View style={styles.gamesHeader}>
+            <Text style={styles.gamesHeaderTitle}>
               🎮 Minihry
             </Text>
 
             <TouchableOpacity onPress={onClose}>
-              <Text style={styles.closeText}>✕</Text>
+              <Text style={styles.closeButton}>✕</Text>
             </TouchableOpacity>
           </View>
 
           <ScrollView
             horizontal
             showsHorizontalScrollIndicator={false}
-            contentContainerStyle={styles.gameTabs}
+            style={styles.gameTabs}
+            contentContainerStyle={styles.gameTabsContent}
           >
-            {games.map(([id, title]) => (
+            {games.map((item) => (
               <TouchableOpacity
-                key={id}
+                key={item.id}
                 style={[
                   styles.gameTab,
-                  game === id && styles.gameTabActive,
+                  game === item.id &&
+                    styles.gameTabActive,
                 ]}
-                onPress={() => setGame(id)}
+                onPress={() => setGame(item.id)}
               >
                 <Text
                   style={[
                     styles.gameTabText,
-                    game === id &&
+                    game === item.id &&
                       styles.gameTabTextActive,
                   ]}
                 >
-                  {title}
+                  {item.label}
                 </Text>
               </TouchableOpacity>
             ))}
           </ScrollView>
 
           <ScrollView
-            style={styles.gameScroll}
+            style={styles.gameContent}
             contentContainerStyle={
-              styles.gameScrollContent
+              styles.gameContentContainer
             }
             showsVerticalScrollIndicator={false}
           >
@@ -621,15 +732,15 @@ function GamesMenu({ visible, onClose }) {
 }
 
 /* =========================
-   APP
+   HLAVNÍ APLIKACE
 ========================= */
 
 export default function App() {
   const [messages, setMessages] = useState([
     {
-      id: "welcome",
+      id: makeId(),
       role: "assistant",
-      text:
+      content:
         "Čau 😈 Já jsem Rýp. Tak co dneska vyřešíme?",
     },
   ]);
@@ -640,129 +751,140 @@ export default function App() {
   const [gamesVisible, setGamesVisible] =
     useState(false);
 
+  const [savedChats, setSavedChats] = useState([]);
+  const [savedVisible, setSavedVisible] =
+    useState(false);
+
+  const [photoUri, setPhotoUri] = useState(null);
+  const [photoVisible, setPhotoVisible] =
+    useState(false);
+
   const [moreVisible, setMoreVisible] =
     useState(false);
 
-  const [savedChats, setSavedChats] = useState([]);
+  const [settingsVisible, setSettingsVisible] =
+    useState(false);
 
-  const [photoUri, setPhotoUri] = useState(null);
+  const [aboutVisible, setAboutVisible] =
+    useState(false);
+
+  /* =========================
+     NAČTENÍ ULOŽENÝCH CHATŮ
+  ========================= */
 
   useEffect(() => {
-    loadChats();
+    loadSavedChats();
   }, []);
 
-  const loadChats = async () => {
+  const loadSavedChats = async () => {
     try {
-      const saved =
-        await AsyncStorage.getItem(CHAT_KEY);
+      const saved = await AsyncStorage.getItem(
+        CHAT_KEY
+      );
 
       if (saved) {
         setSavedChats(JSON.parse(saved));
       }
     } catch (error) {
-      console.log("LOAD CHATS ERROR", error);
+      console.log(
+        "Chyba při načítání chatů:",
+        error
+      );
     }
   };
 
-  const saveCurrentChat = async (
-    newMessages = messages
-  ) => {
+  const persistChats = async (chats) => {
     try {
-      if (
-        !newMessages ||
-        newMessages.length <= 1
-      ) {
-        return;
-      }
-
-      const firstUserMessage =
-        newMessages.find(
-          (m) => m.role === "user"
-        );
-
-      const title =
-        firstUserMessage?.text
-          ?.trim()
-          .slice(0, 35) || "Nový chat";
-
-      const chat = {
-        id: makeId(),
-        title,
-        messages: newMessages,
-        createdAt: Date.now(),
-      };
-
-      const current =
-        await AsyncStorage.getItem(CHAT_KEY);
-
-      const existing = current
-        ? JSON.parse(current)
-        : [];
-
-      const updated = [
-        chat,
-        ...existing,
-      ].slice(0, 30);
-
       await AsyncStorage.setItem(
         CHAT_KEY,
-        JSON.stringify(updated)
+        JSON.stringify(chats)
       );
-
-      setSavedChats(updated);
     } catch (error) {
-      console.log("SAVE CHAT ERROR", error);
+      console.log(
+        "Chyba při ukládání chatů:",
+        error
+      );
     }
+  };
+
+  /* =========================
+     ULOŽENÍ CHatu
+  ========================= */
+
+  const saveCurrentChat = async () => {
+    if (
+      !messages ||
+      messages.length === 0
+    ) {
+      return;
+    }
+
+    const firstUserMessage = messages.find(
+      (message) =>
+        message.role === "user"
+    );
+
+    const title =
+      firstUserMessage?.content
+        ?.slice(0, 35) ||
+      "Nový chat";
+
+    const chat = {
+      id: makeId(),
+      title,
+      messages,
+      createdAt: new Date().toISOString(),
+    };
+
+    const updated = [
+      chat,
+      ...savedChats,
+    ].slice(0, 30);
+
+    setSavedChats(updated);
+
+    await persistChats(updated);
+
+    Alert.alert(
+      "Hotovo",
+      "Chat byl uložen 😈"
+    );
+  };
+
+  const deleteChat = async (id) => {
+    const updated = savedChats.filter(
+      (chat) => chat.id !== id
+    );
+
+    setSavedChats(updated);
+    await persistChats(updated);
   };
 
   const openSavedChat = (chat) => {
     setMessages(chat.messages);
-    setMoreVisible(false);
+    setSavedVisible(false);
   };
 
-  const deleteChat = (id) => {
-    Alert.alert(
-      "Smazat chat?",
-      "Tenhle chat fakt zmizí.",
-      [
-        {
-          text: "Zrušit",
-          style: "cancel",
-        },
-        {
-          text: "Smazat",
-          style: "destructive",
-          onPress: async () => {
-            const updated =
-              savedChats.filter(
-                (chat) => chat.id !== id
-              );
-
-            setSavedChats(updated);
-
-            await AsyncStorage.setItem(
-              CHAT_KEY,
-              JSON.stringify(updated)
-            );
-          },
-        },
-      ]
-    );
-  };
+  /* =========================
+     NOVÝ CHAT
+  ========================= */
 
   const newChat = () => {
     setMessages([
       {
-        id: "welcome-" + Date.now(),
+        id: makeId(),
         role: "assistant",
-        text:
-          "Nový chat 😈 Tak povídej.",
+        content:
+          "Čau 😈 Já jsem Rýp. Tak co dneska vyřešíme?",
       },
     ]);
 
     setInput("");
-    setMoreVisible(false);
   };
+
+  /* =========================
+     POSLÁNÍ ZPRÁVY
+  ========================= */
 
   const sendMessage = async () => {
     const text = input.trim();
@@ -774,15 +896,15 @@ export default function App() {
     const userMessage = {
       id: makeId(),
       role: "user",
-      text,
+      content: text,
     };
 
-    const updatedMessages = [
+    const nextMessages = [
       ...messages,
       userMessage,
     ];
 
-    setMessages(updatedMessages);
+    setMessages(nextMessages);
     setInput("");
     setLoading(true);
 
@@ -796,57 +918,44 @@ export default function App() {
               "application/json",
           },
           body: JSON.stringify({
-            messages:
-              updatedMessages.map(
-                (message) => ({
-                  role: message.role,
-                  content: message.text,
-                })
-              ),
+            messages: nextMessages
+              .slice(-12)
+              .map((message) => ({
+                role: message.role,
+                content: message.content,
+              })),
           }),
         }
       );
 
-      if (!response.ok) {
-        throw new Error(
-          `HTTP ${response.status}`
-        );
-      }
-
       const data = await response.json();
 
       const answer =
-        data.reply ||
-        data.message ||
-        data.content ||
-        "Ty vole, nějak jsem se zasekl 😂";
-
-      const assistantMessage = {
-        id: makeId(),
-        role: "assistant",
-        text: answer,
-      };
-
-      const finalMessages = [
-        ...updatedMessages,
-        assistantMessage,
-      ];
-
-      setMessages(finalMessages);
-
-      await saveCurrentChat(
-        finalMessages
-      );
-    } catch (error) {
-      console.log("CHAT ERROR", error);
+        data?.reply ||
+        data?.message ||
+        "Rýp momentálně mlčí. 🤨";
 
       setMessages((current) => [
         ...current,
         {
           id: makeId(),
           role: "assistant",
-          text:
-            "Něco se posralo při spojení se serverem 😅 Zkus to za chvíli znovu.",
+          content: answer,
+        },
+      ]);
+    } catch (error) {
+      console.log(
+        "Chyba API:",
+        error
+      );
+
+      setMessages((current) => [
+        ...current,
+        {
+          id: makeId(),
+          role: "assistant",
+          content:
+            "Kurva, spojení se mnou nějak chcíplo. Zkus to znovu 😅",
         },
       ]);
     } finally {
@@ -855,7 +964,7 @@ export default function App() {
   };
 
   /* =========================
-     CAMERA
+     FOTO
   ========================= */
 
   const openCamera = async () => {
@@ -875,33 +984,25 @@ export default function App() {
         await ImagePicker.launchCameraAsync({
           mediaTypes:
             ImagePicker.MediaTypeOptions.Images,
-          quality: 0.85,
+          quality: 0.8,
         });
 
-      if (
-        !result.canceled &&
-        result.assets?.[0]?.uri
-      ) {
-        setPhotoUri(
-          result.assets[0].uri
-        );
+      if (!result.canceled) {
+        const uri =
+          result.assets?.[0]?.uri;
+
+        if (uri) {
+          setPhotoUri(uri);
+          setPhotoVisible(true);
+        }
       }
     } catch (error) {
       console.log(
-        "CAMERA ERROR",
+        "Kamera chyba:",
         error
-      );
-
-      Alert.alert(
-        "Chyba",
-        "Kameru se nepodařilo otevřít."
       );
     }
   };
-
-  /* =========================
-     GALLERY
-  ========================= */
 
   const openGallery = async () => {
     try {
@@ -911,7 +1012,7 @@ export default function App() {
       if (!permission.granted) {
         Alert.alert(
           "Galerie",
-          "Rýp potřebuje povolení ke galerii."
+          "Rýp potřebuje povolení k fotkám."
         );
         return;
       }
@@ -920,60 +1021,30 @@ export default function App() {
         await ImagePicker.launchImageLibraryAsync({
           mediaTypes:
             ImagePicker.MediaTypeOptions.Images,
-          quality: 0.85,
+          quality: 0.8,
         });
 
-      if (
-        !result.canceled &&
-        result.assets?.[0]?.uri
-      ) {
-        setPhotoUri(
-          result.assets[0].uri
-        );
+      if (!result.canceled) {
+        const uri =
+          result.assets?.[0]?.uri;
+
+        if (uri) {
+          setPhotoUri(uri);
+          setPhotoVisible(true);
+        }
       }
     } catch (error) {
       console.log(
-        "GALLERY ERROR",
+        "Galerie chyba:",
         error
-      );
-
-      Alert.alert(
-        "Chyba",
-        "Galerii se nepodařilo otevřít."
       );
     }
   };
-
-  /* =========================
-     PHOTO EDIT
-  ========================= */
 
   const rotatePhoto = async () => {
-    if (!photoUri) return;
-
-    try {
-      const result =
-        await ImageManipulator.manipulateAsync(
-          photoUri,
-          [{ rotate: 90 }],
-          {
-            compress: 0.9,
-            format:
-              ImageManipulator.SaveFormat.JPEG,
-          }
-        );
-
-      setPhotoUri(result.uri);
-    } catch (error) {
-      console.log(
-        "ROTATE ERROR",
-        error
-      );
+    if (!photoUri) {
+      return;
     }
-  };
-
-  const flipPhoto = async () => {
-    if (!photoUri) return;
 
     try {
       const result =
@@ -981,9 +1052,7 @@ export default function App() {
           photoUri,
           [
             {
-              flip:
-                ImageManipulator.FlipType
-                  .Horizontal,
+              rotate: 90,
             },
           ],
           {
@@ -996,146 +1065,198 @@ export default function App() {
       setPhotoUri(result.uri);
     } catch (error) {
       console.log(
-        "FLIP ERROR",
+        "Rotace chyba:",
         error
       );
     }
   };
 
-  const closePhoto = () => {
-    setPhotoUri(null);
-  };
+  const flipPhoto = async () => {
+    if (!photoUri) {
+      return;
+    }
 
-  return (
-    <SafeAreaView style={styles.safe}>
-      <View style={styles.container}>
+    try {
+      const result =
+        await ImageManipulator.manipulateAsync(
+          photoUri,
+          [
+            {
+              flip: ImageManipulator.FlipType.Horizontal,
+            },
+          ],
+          {
+            compress: 0.9,
+            format:
+              ImageManipulator.SaveFormat.JPEG,
+          }
+        );
 
-        {/* HEADER */}
+      setPhotoUri(result.uri);
+    } catch (error) {
+      console.log(
+        "Převrácení chyba:",
+        error
+      );
+    }
+  };  return (
+    <SafeAreaView style={styles.safeArea}>
+      <KeyboardAvoidingView
+        style={styles.container}
+        behavior={
+          Platform.OS === "ios"
+            ? "padding"
+            : undefined
+        }
+      >
+        {/* =========================
+            HLAVIČKA
+        ========================= */}
 
         <View style={styles.header}>
-          <Image
-            source={RYP_IMAGE}
-            style={styles.headerImage}
-            resizeMode="contain"
-          />
+          <View style={styles.headerLeft}>
+            <Image
+              source={RYP_IMAGE}
+              style={styles.headerAvatar}
+              resizeMode="cover"
+            />
 
-          <View style={styles.headerTextBox}>
-            <Text style={styles.headerTitle}>
-              Rýp
-            </Text>
+            <View>
+              <Text style={styles.logoText}>
+                RýpAI
+              </Text>
 
-            <Text style={styles.headerSubtitle}>
-              AI kámoš, co se s tebou nemaže 😈
-            </Text>
+              <Text style={styles.subtitleText}>
+                AI kámoš, co se s tebou nemaže 😈
+              </Text>
+            </View>
           </View>
+
+          <TouchableOpacity
+            style={styles.headerButton}
+            onPress={newChat}
+          >
+            <Text style={styles.headerButtonText}>
+              ＋
+            </Text>
+          </TouchableOpacity>
         </View>
 
-        {/* CHAT */}
+        {/* =========================
+            CHAT
+        ========================= */}
 
-        <KeyboardAvoidingView
-          style={styles.chatContainer}
-          behavior={
-            Platform.OS === "ios"
-              ? "padding"
-              : undefined
+        <FlatList
+          data={messages}
+          keyExtractor={(item) => item.id}
+          style={styles.chatList}
+          contentContainerStyle={
+            styles.chatContent
           }
-        >
-          <FlatList
-            data={messages}
-            keyExtractor={(item) =>
-              item.id
-            }
-            style={styles.messageList}
-            contentContainerStyle={
-              styles.messageContent
-            }
-            showsVerticalScrollIndicator={
-              false
-            }
-            renderItem={({ item }) => {
-              const isUser =
-                item.role === "user";
+          showsVerticalScrollIndicator={false}
+          renderItem={({ item }) => (
+            <View
+              style={[
+                styles.messageRow,
+                item.role === "user"
+                  ? styles.userRow
+                  : styles.assistantRow,
+              ]}
+            >
+              {item.role === "assistant" && (
+                <Image
+                  source={RYP_IMAGE}
+                  style={styles.messageAvatar}
+                />
+              )}
 
-              return (
-                <View
-                  style={[
-                    styles.messageRow,
-                    isUser
-                      ? styles.messageRowUser
-                      : styles.messageRowAssistant,
-                  ]}
-                >
-                  <View
-                    style={[
-                      styles.bubble,
-                      isUser
-                        ? styles.userBubble
-                        : styles.assistantBubble,
-                    ]}
-                  >
-                    <LinkText
-                      text={item.text}
-                    />
-                  </View>
-                </View>
-              );
-            }}
-          />
+              <View
+                style={[
+                  styles.messageBubble,
+                  item.role === "user"
+                    ? styles.userBubble
+                    : styles.assistantBubble,
+                ]}
+              >
+                <LinkText
+                  text={item.content}
+                />
+              </View>
+            </View>
+          )}
+        />
 
-          {loading && (
-            <View style={styles.typingBox}>
-              <Text style={styles.typingText}>
+        {loading && (
+          <View style={styles.loadingRow}>
+            <Image
+              source={RYP_IMAGE}
+              style={styles.loadingAvatar}
+            />
+
+            <View
+              style={styles.loadingBubble}
+            >
+              <Text
+                style={styles.loadingText}
+              >
                 Rýp přemýšlí... 😈
               </Text>
             </View>
-          )}
-
-          {/* INPUT */}
-
-          <View style={styles.inputArea}>
-            <TouchableOpacity
-              style={styles.inputIcon}
-              onPress={openCamera}
-            >
-              <Text
-                style={styles.inputIconText}
-              >
-                📷
-              </Text>
-            </TouchableOpacity>
-
-            <TextInput
-              style={styles.input}
-              value={input}
-              onChangeText={setInput}
-              placeholder="Napiš Rýpovi..."
-              placeholderTextColor="#7d8794"
-              multiline
-              maxLength={2000}
-            />
-
-            <TouchableOpacity
-              style={styles.sendButton}
-              onPress={sendMessage}
-              disabled={loading}
-            >
-              <Text
-                style={styles.sendButtonText}
-              >
-                ➤
-              </Text>
-            </TouchableOpacity>
           </View>
-        </KeyboardAvoidingView>
+        )}
 
-        {/* BOTTOM NAV */}
+        {/* =========================
+            INPUT
+        ========================= */}
+
+        <View style={styles.inputArea}>
+          <TouchableOpacity
+            style={styles.cameraButton}
+            onPress={openCamera}
+          >
+            <Text style={styles.cameraIcon}>
+              📷
+            </Text>
+          </TouchableOpacity>
+
+          <TextInput
+            style={styles.textInput}
+            value={input}
+            onChangeText={setInput}
+            placeholder="Napiš Rýpovi..."
+            placeholderTextColor="#777"
+            multiline
+            maxLength={4000}
+            onSubmitEditing={sendMessage}
+          />
+
+          <TouchableOpacity
+            style={[
+              styles.sendButton,
+              (!input.trim() || loading) &&
+                styles.sendButtonDisabled,
+            ]}
+            onPress={sendMessage}
+            disabled={
+              !input.trim() || loading
+            }
+          >
+            <Text style={styles.sendIcon}>
+              ➤
+            </Text>
+          </TouchableOpacity>
+        </View>
+
+        {/* =========================
+            SPODNÍ NAVIGACE
+        ========================= */}
 
         <View style={styles.bottomNav}>
           <TouchableOpacity
-            style={styles.navButton}
+            style={styles.navItem}
             onPress={() => {
-              setGamesVisible(false);
               setMoreVisible(false);
+              setSavedVisible(false);
             }}
           >
             <Text style={styles.navIcon}>
@@ -1148,7 +1269,7 @@ export default function App() {
           </TouchableOpacity>
 
           <TouchableOpacity
-            style={styles.navButton}
+            style={styles.navItem}
             onPress={() =>
               setGamesVisible(true)
             }
@@ -1163,11 +1284,13 @@ export default function App() {
           </TouchableOpacity>
 
           <TouchableOpacity
-            style={styles.navButton}
-            onPress={openGallery}
+            style={styles.navItem}
+            onPress={() =>
+              setPhotoVisible(true)
+            }
           >
             <Text style={styles.navIcon}>
-              🖼️
+              📷
             </Text>
 
             <Text style={styles.navText}>
@@ -1176,7 +1299,7 @@ export default function App() {
           </TouchableOpacity>
 
           <TouchableOpacity
-            style={styles.navButton}
+            style={styles.navItem}
             onPress={() =>
               setMoreVisible(true)
             }
@@ -1190,832 +1313,684 @@ export default function App() {
             </Text>
           </TouchableOpacity>
         </View>
-      </View>
 
-      {/* GAMES */}
+        {/* =========================
+            HRY
+        ========================= */}
 
-      <GamesMenu
-        visible={gamesVisible}
-        onClose={() =>
-          setGamesVisible(false)
-        }
-      />
+        <GamesMenu
+          visible={gamesVisible}
+          onClose={() =>
+            setGamesVisible(false)
+          }
+        />
 
-      {/* MORE */}
+        {/* =========================
+            FOTO MODAL
+        ========================= */}
 
-      <Modal
-        visible={moreVisible}
-        animationType="slide"
-        transparent
-        onRequestClose={() =>
-          setMoreVisible(false)
-        }
-      >
-        <View style={styles.modalOverlay}>
-          <View style={styles.moreModal}>
-            <View style={styles.modalHeader}>
-              <Text style={styles.modalTitle}>
-                Další
-              </Text>
-
-              <TouchableOpacity
-                onPress={() =>
-                  setMoreVisible(false)
-                }
-              >
-                <Text style={styles.closeText}>
-                  ✕
+        <Modal
+          visible={photoVisible}
+          transparent
+          animationType="slide"
+          onRequestClose={() =>
+            setPhotoVisible(false)
+          }
+        >
+          <View style={styles.modalOverlay}>
+            <View style={styles.photoModal}>
+              <View style={styles.modalHeader}>
+                <Text style={styles.modalTitle}>
+                  📷 Foto
                 </Text>
-              </TouchableOpacity>
-            </View>
 
-            <TouchableOpacity
-              style={styles.moreButton}
-              onPress={newChat}
-            >
-              <Text style={styles.moreButtonIcon}>
-                ➕
-              </Text>
+                <TouchableOpacity
+                  onPress={() =>
+                    setPhotoVisible(false)
+                  }
+                >
+                  <Text
+                    style={styles.closeButton}
+                  >
+                    ✕
+                  </Text>
+                </TouchableOpacity>
+              </View>
 
-              <Text style={styles.moreButtonText}>
-                Nový chat
-              </Text>
-            </TouchableOpacity>
+              {photoUri ? (
+                <Image
+                  source={{ uri: photoUri }}
+                  style={styles.previewImage}
+                  resizeMode="contain"
+                />
+              ) : (
+                <View
+                  style={styles.emptyPhoto}
+                >
+                  <Text
+                    style={styles.emptyPhotoText}
+                  >
+                    Vyfoť nebo vyber fotku 😈
+                  </Text>
+                </View>
+              )}
 
-            <TouchableOpacity
-              style={styles.moreButton}
-              onPress={openCamera}
-            >
-              <Text style={styles.moreButtonIcon}>
-                📷
-              </Text>
+              <View style={styles.photoButtons}>
+                <TouchableOpacity
+                  style={styles.photoAction}
+                  onPress={openCamera}
+                >
+                  <Text
+                    style={styles.photoActionText}
+                  >
+                    📷 Kamera
+                  </Text>
+                </TouchableOpacity>
 
-              <Text style={styles.moreButtonText}>
-                Vyfotit
-              </Text>
-            </TouchableOpacity>
+                <TouchableOpacity
+                  style={styles.photoAction}
+                  onPress={openGallery}
+                >
+                  <Text
+                    style={styles.photoActionText}
+                  >
+                    🖼️ Galerie
+                  </Text>
+                </TouchableOpacity>
+              </View>
 
-            <TouchableOpacity
-              style={styles.moreButton}
-              onPress={openGallery}
-            >
-              <Text style={styles.moreButtonIcon}>
-                🖼️
-              </Text>
-
-              <Text style={styles.moreButtonText}>
-                Vybrat fotku
-              </Text>
-            </TouchableOpacity>
-
-            <Text style={styles.savedTitle}>
-              Uložené chaty
-            </Text>
-
-            {savedChats.length === 0 ? (
-              <Text style={styles.emptyText}>
-                Zatím tu nic není.
-              </Text>
-            ) : (
-              <FlatList
-                data={savedChats}
-                keyExtractor={(item) =>
-                  item.id
-                }
-                style={styles.savedList}
-                renderItem={({ item }) => (
-                  <View style={styles.savedRow}>
-                    <TouchableOpacity
-                      style={styles.savedChat}
-                      onPress={() =>
-                        openSavedChat(item)
-                      }
-                    >
-                      <Text
-                        style={
-                          styles.savedChatTitle
-                        }
-                        numberOfLines={1}
-                      >
-                        {item.title}
-                      </Text>
-
-                      <Text
-                        style={
-                          styles.savedChatDate
-                        }
-                      >
-                        {new Date(
-                          item.createdAt
-                        ).toLocaleDateString(
-                          "cs-CZ"
-                        )}
-                      </Text>
-                    </TouchableOpacity>
-
-                    <TouchableOpacity
+              {photoUri && (
+                <View
+                  style={styles.photoButtons}
+                >
+                  <TouchableOpacity
+                    style={styles.photoAction}
+                    onPress={rotatePhoto}
+                  >
+                    <Text
                       style={
-                        styles.deleteButton
-                      }
-                      onPress={() =>
-                        deleteChat(item.id)
+                        styles.photoActionText
                       }
                     >
-                      <Text
-                        style={styles.deleteText}
-                      >
-                        🗑️
-                      </Text>
-                    </TouchableOpacity>
-                  </View>
-                )}
-              />
-            )}
+                      🔄 Otočit
+                    </Text>
+                  </TouchableOpacity>
+
+                  <TouchableOpacity
+                    style={styles.photoAction}
+                    onPress={flipPhoto}
+                  >
+                    <Text
+                      style={
+                        styles.photoActionText
+                      }
+                    >
+                      ↔️ Převrátit
+                    </Text>
+                  </TouchableOpacity>
+                </View>
+              )}
+            </View>
           </View>
-        </View>
-      </Modal>
+        </Modal>
 
-      {/* PHOTO */}
+        {/* =========================
+            DALŠÍ
+        ========================= */}
 
-      <Modal
-        visible={!!photoUri}
-        animationType="fade"
-        transparent
-        onRequestClose={closePhoto}
-      >
-        <View style={styles.photoOverlay}>
-          <View style={styles.photoModal}>
-            <View style={styles.modalHeader}>
-              <Text style={styles.modalTitle}>
-                📸 Fotka
-              </Text>
+        <Modal
+          visible={moreVisible}
+          transparent
+          animationType="slide"
+          onRequestClose={() =>
+            setMoreVisible(false)
+          }
+        >
+          <View style={styles.modalOverlay}>
+            <View style={styles.moreModal}>
+              <View style={styles.modalHeader}>
+                <Text style={styles.modalTitle}>
+                  ☰ Další
+                </Text>
+
+                <TouchableOpacity
+                  onPress={() =>
+                    setMoreVisible(false)
+                  }
+                >
+                  <Text
+                    style={styles.closeButton}
+                  >
+                    ✕
+                  </Text>
+                </TouchableOpacity>
+              </View>
 
               <TouchableOpacity
-                onPress={closePhoto}
-              >
-                <Text style={styles.closeText}>
-                  ✕
-                </Text>
-              </TouchableOpacity>
-            </View>
-
-            {photoUri && (
-              <Image
-                source={{
-                  uri: photoUri,
+                style={styles.menuButton}
+                onPress={() => {
+                  setMoreVisible(false);
+                  setSavedVisible(true);
                 }}
-                style={styles.photoPreview}
-                resizeMode="contain"
-              />
-            )}
-
-            <View style={styles.photoActions}>
-              <TouchableOpacity
-                style={styles.photoAction}
-                onPress={rotatePhoto}
               >
-                <Text
-                  style={
-                    styles.photoActionText
-                  }
-                >
-                  🔄 Otočit
+                <Text style={styles.menuButtonIcon}>
+                  💾
+                </Text>
+
+                <Text style={styles.menuButtonText}>
+                  Uložené chaty
                 </Text>
               </TouchableOpacity>
 
               <TouchableOpacity
-                style={styles.photoAction}
-                onPress={flipPhoto}
+                style={styles.menuButton}
+                onPress={saveCurrentChat}
               >
-                <Text
-                  style={
-                    styles.photoActionText
-                  }
-                >
-                  ↔️ Překlopit
+                <Text style={styles.menuButtonIcon}>
+                  📌
+                </Text>
+
+                <Text style={styles.menuButtonText}>
+                  Uložit aktuální chat
+                </Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={styles.menuButton}
+                onPress={() => {
+                  setMoreVisible(false);
+                  setSettingsVisible(true);
+                }}
+              >
+                <Text style={styles.menuButtonIcon}>
+                  ⚙️
+                </Text>
+
+                <Text style={styles.menuButtonText}>
+                  Nastavení
+                </Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={styles.menuButton}
+                onPress={() => {
+                  setMoreVisible(false);
+                  setAboutVisible(true);
+                }}
+              >
+                <Text style={styles.menuButtonIcon}>
+                  ℹ️
+                </Text>
+
+                <Text style={styles.menuButtonText}>
+                  O aplikaci
                 </Text>
               </TouchableOpacity>
             </View>
-
-            <TouchableOpacity
-              style={styles.closePhotoButton}
-              onPress={closePhoto}
-            >
-              <Text
-                style={
-                  styles.closePhotoButtonText
-                }
-              >
-                HOTOVO
-              </Text>
-            </TouchableOpacity>
           </View>
+        </Modal>
+
+        {/* =========================
+            ULOŽENÉ CHATY
+        ========================= */}
+
+        <Modal
+          visible={savedVisible}
+          transparent
+          animationType="slide"
+          onRequestClose={() =>
+            setSavedVisible(false)
+          }
+        >
+          <View style={styles.modalOverlay}>
+            <View style={styles.moreModal}>
+              <View style={styles.modalHeader}>
+                <Text style={styles.modalTitle}>
+                  💾 Uložené chaty
+                </Text>
+
+                <TouchableOpacity
+                  onPress={() =>
+                    setSavedVisible(false)
+                  }
+                >
+                  <Text
+                    style={styles.closeButton}
+                  >
+                    ✕
+                  </Text>
+                </TouchableOpacity>
+              </View>
+
+              {savedChats.length === 0 ? (
+                <View style={styles.emptyState}>
+                  <Text
+                    style={styles.emptyStateText}
+                  >
+                    Zatím tu nic není 😈
+                  </Text>
+                </View>
+              ) : (
+                <FlatList
+                  data={savedChats}
+                  keyExtractor={(item) =>
+                    item.id
+                  }
+                  showsVerticalScrollIndicator={
+                    false
+                  }
+                  renderItem={({
+                    item,
+                  }) => (
+                    <View
+                      style={
+                        styles.savedChatRow
+                      }
+                    >
+                      <TouchableOpacity
+                        style={
+                          styles.savedChatOpen
+                        }
+                        onPress={() =>
+                          openSavedChat(item)
+                        }
+                      >
+                        <Text
+                          style={
+                            styles.savedChatTitle
+                          }
+                          numberOfLines={2}
+                        >
+                          {item.title}
+                        </Text>
+
+                        <Text
+                          style={
+                            styles.savedChatDate
+                          }
+                        >
+                          {new Date(
+                            item.createdAt
+                          ).toLocaleDateString(
+                            "cs-CZ"
+                          )}
+                        </Text>
+                      </TouchableOpacity>
+
+                      <TouchableOpacity
+                        style={
+                          styles.deleteChatButton
+                        }
+                        onPress={() =>
+                          deleteChat(item.id)
+                        }
+                      >
+                        <Text
+                          style={
+                            styles.deleteChatText
+                          }
+                        >
+                          🗑️
+                        </Text>
+                      </TouchableOpacity>
+                    </View>
+                  )}
+                />
+              )}
+            </View>
+          </View>
+        </Modal>    {/* O aplikaci */}
+    <Modal
+      visible={moreModal === "about"}
+      transparent
+      animationType="fade"
+      onRequestClose={() => setMoreModal(null)}
+    >
+      <View style={styles.overlay}>
+        <View style={styles.moreBox}>
+          <Text style={styles.moreTitle}>Rýp AI</Text>
+          <Text style={styles.moreText}>
+            Tvůj AI kámoš, co se s tebou nemaže 😈
+          </Text>
+
+          <TouchableOpacity
+            style={styles.closeButton}
+            onPress={() => setMoreModal(null)}
+          >
+            <Text style={styles.closeButtonText}>Zavřít</Text>
+          </TouchableOpacity>
         </View>
-      </Modal>
-    </SafeAreaView>
-  );
+      </View>
+    </Modal>
+
+    {/* Nastavení */}
+    <Modal
+      visible={moreModal === "settings"}
+      transparent
+      animationType="fade"
+      onRequestClose={() => setMoreModal(null)}
+    >
+      <View style={styles.overlay}>
+        <View style={styles.moreBox}>
+          <Text style={styles.moreTitle}>Nastavení</Text>
+
+          <Text style={styles.moreText}>
+            Rýp AI • verze 1.1
+          </Text>
+
+          <TouchableOpacity
+            style={styles.closeButton}
+            onPress={() => setMoreModal(null)}
+          >
+            <Text style={styles.closeButtonText}>Zavřít</Text>
+          </TouchableOpacity>
+        </View>
+      </View>
+    </Modal>
+  </View>
+);
 }
 
-/* =========================
-   STYLES
-========================= */
-
 const styles = StyleSheet.create({
-  safe: {
-    flex: 1,
-    backgroundColor: "#dceeff",
-  },
-
   container: {
     flex: 1,
-    backgroundColor: "#dceeff",
+    backgroundColor: "#080B10",
   },
 
   header: {
-    height: 86,
-    backgroundColor: "#b9ddff",
+    height: 78,
+    paddingHorizontal: 18,
+    paddingTop: 12,
     flexDirection: "row",
     alignItems: "center",
-    paddingHorizontal: 16,
     borderBottomWidth: 1,
-    borderBottomColor: "#9bc9f4",
+    borderBottomColor: "#151B23",
+    backgroundColor: "#0B0F15",
   },
 
-  headerImage: {
-    width: 66,
-    height: 66,
-    marginRight: 10,
-  },
-
-  headerTextBox: {
-    flex: 1,
+  avatar: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    marginRight: 12,
   },
 
   headerTitle: {
-    fontSize: 27,
+    color: "#F5F7FA",
+    fontSize: 25,
     fontWeight: "900",
-    color: "#12385c",
   },
 
-  headerSubtitle: {
+  headerSub: {
+    color: "#7F8996",
     fontSize: 12,
-    color: "#41627d",
     marginTop: 1,
   },
 
-  chatContainer: {
+  chatList: {
     flex: 1,
-  },
-
-  messageList: {
-    flex: 1,
-  },
-
-  messageContent: {
-    paddingHorizontal: 12,
+    paddingHorizontal: 14,
     paddingTop: 12,
-    paddingBottom: 12,
   },
 
   messageRow: {
-    width: "100%",
-    marginBottom: 9,
+    marginVertical: 5,
+    flexDirection: "row",
   },
 
-  messageRowUser: {
-    alignItems: "flex-end",
+  userRow: {
+    justifyContent: "flex-end",
   },
 
-  messageRowAssistant: {
-    alignItems: "flex-start",
+  botRow: {
+    justifyContent: "flex-start",
   },
 
-  bubble: {
-    maxWidth: "88%",
+  messageBubble: {
+    maxWidth: "82%",
     paddingHorizontal: 14,
     paddingVertical: 11,
-    borderRadius: 19,
-    shadowColor: "#000",
-    shadowOpacity: 0.08,
-    shadowRadius: 4,
-    shadowOffset: {
-      width: 0,
-      height: 2,
-    },
-    elevation: 2,
+    borderRadius: 18,
   },
 
   userBubble: {
-    backgroundColor: "#ffffff",
+    backgroundColor: "#18232B",
     borderBottomRightRadius: 5,
   },
 
-  assistantBubble: {
-    backgroundColor: "#ffffff",
+  botBubble: {
+    backgroundColor: "#111820",
     borderBottomLeftRadius: 5,
+    borderWidth: 1,
+    borderColor: "#1D2731",
   },
 
   messageText: {
-    color: "#111827",
+    color: "#E9EDF2",
     fontSize: 16,
     lineHeight: 22,
   },
 
-  linkText: {
-    color: "#1475d1",
-    textDecorationLine: "underline",
-  },
-
-  typingBox: {
-    paddingHorizontal: 18,
-    paddingBottom: 6,
-  },
-
-  typingText: {
-    color: "#45657d",
-    fontSize: 13,
-    fontStyle: "italic",
-  },
-
   inputArea: {
+    marginHorizontal: 12,
+    marginBottom: 8,
+    minHeight: 58,
+    maxHeight: 120,
+    borderRadius: 20,
+    backgroundColor: "#11161D",
+    borderWidth: 1,
+    borderColor: "#202A34",
     flexDirection: "row",
-    alignItems: "flex-end",
-    paddingHorizontal: 9,
-    paddingTop: 7,
-    paddingBottom: 7,
-    backgroundColor: "#dceeff",
+    alignItems: "center",
+    paddingHorizontal: 8,
+  },
+
+  cameraButton: {
+    width: 42,
+    height: 42,
+    borderRadius: 21,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+
+  cameraText: {
+    fontSize: 23,
   },
 
   input: {
     flex: 1,
-    minHeight: 45,
-    maxHeight: 110,
-    backgroundColor: "#ffffff",
-    borderRadius: 22,
-    paddingHorizontal: 15,
-    paddingVertical: 11,
-    color: "#111827",
+    color: "#F2F4F7",
     fontSize: 16,
-    borderWidth: 1,
-    borderColor: "#b9d7ef",
-  },
-
-  inputIcon: {
-    width: 43,
-    height: 43,
-    alignItems: "center",
-    justifyContent: "center",
-    marginRight: 4,
-  },
-
-  inputIconText: {
-    fontSize: 23,
+    paddingHorizontal: 7,
+    paddingVertical: 10,
   },
 
   sendButton: {
-    width: 45,
-    height: 45,
-    borderRadius: 23,
-    backgroundColor: "#1779cf",
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: "#B8F500",
     alignItems: "center",
     justifyContent: "center",
-    marginLeft: 5,
   },
 
-  sendButtonText: {
-    color: "#fff",
-    fontSize: 23,
+  sendText: {
+    color: "#080B10",
+    fontSize: 20,
     fontWeight: "900",
   },
 
   bottomNav: {
-    height: 69,
-    backgroundColor: "#1976c9",
-    borderTopLeftRadius: 22,
-    borderTopRightRadius: 22,
+    height: 66,
+    marginHorizontal: 10,
+    marginBottom: 8,
+    borderRadius: 22,
+    backgroundColor: "#10161D",
+    borderWidth: 1,
+    borderColor: "#202A34",
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-around",
-    paddingHorizontal: 8,
-    shadowColor: "#000",
-    shadowOpacity: 0.15,
-    shadowRadius: 8,
-    shadowOffset: {
-      width: 0,
-      height: -3,
-    },
-    elevation: 8,
   },
 
   navButton: {
     flex: 1,
     alignItems: "center",
     justifyContent: "center",
+    height: "100%",
   },
 
   navIcon: {
     fontSize: 21,
-    marginBottom: 2,
   },
 
   navText: {
-    color: "#fff",
+    color: "#737E8B",
     fontSize: 11,
-    fontWeight: "800",
+    marginTop: 3,
+    fontWeight: "700",
   },
 
-  modalOverlay: {
+  navTextActive: {
+    color: "#B8F500",
+  },
+
+  overlay: {
     flex: 1,
-    backgroundColor: "rgba(0,0,0,0.35)",
-    justifyContent: "flex-end",
-  },
-
-  gamesModal: {
-    height: "88%",
-    backgroundColor: "#dceeff",
-    borderTopLeftRadius: 28,
-    borderTopRightRadius: 28,
-    overflow: "hidden",
-  },
-
-  moreModal: {
-    maxHeight: "88%",
-    minHeight: "55%",
-    backgroundColor: "#dceeff",
-    borderTopLeftRadius: 28,
-    borderTopRightRadius: 28,
-    paddingBottom: 20,
-    overflow: "hidden",
-  },
-
-  modalHeader: {
-    height: 62,
-    backgroundColor: "#b9ddff",
-    flexDirection: "row",
+    backgroundColor: "rgba(0,0,0,0.72)",
+    justifyContent: "center",
     alignItems: "center",
-    justifyContent: "space-between",
-    paddingHorizontal: 18,
-    borderBottomWidth: 1,
-    borderBottomColor: "#9bc9f4",
+    padding: 18,
   },
 
-  modalTitle: {
-    fontSize: 22,
-    fontWeight: "900",
-    color: "#12385c",
-  },
-
-  closeText: {
-    fontSize: 25,
-    fontWeight: "800",
-    color: "#12385c",
-  },
-
-  gameTabs: {
-    paddingHorizontal: 10,
-    paddingVertical: 9,
-    gap: 7,
-  },
-
-  gameTab: {
-    paddingHorizontal: 13,
-    paddingVertical: 9,
-    borderRadius: 17,
-    backgroundColor: "#ffffff",
+  moreBox: {
+    width: "92%",
+    backgroundColor: "#111820",
+    borderRadius: 24,
     borderWidth: 1,
-    borderColor: "#bdd9ef",
+    borderColor: "#27313C",
+    padding: 22,
   },
 
-  gameTabActive: {
-    backgroundColor: "#1976c9",
-    borderColor: "#1976c9",
+  moreTitle: {
+    color: "#F4F6F8",
+    fontSize: 24,
+    fontWeight: "900",
+    marginBottom: 12,
   },
 
-  gameTabText: {
-    color: "#31546e",
-    fontWeight: "800",
-    fontSize: 13,
+  moreText: {
+    color: "#AAB3BD",
+    fontSize: 15,
+    lineHeight: 22,
+    marginBottom: 20,
   },
 
-  gameTabTextActive: {
-    color: "#fff",
+  closeButton: {
+    backgroundColor: "#B8F500",
+    borderRadius: 15,
+    paddingVertical: 13,
+    alignItems: "center",
   },
 
-  gameScroll: {
-    flex: 1,
+  closeButtonText: {
+    color: "#080B10",
+    fontWeight: "900",
+    fontSize: 15,
   },
 
-  gameScrollContent: {
-    padding: 12,
-    paddingBottom: 30,
-  },
-
-  gameCard: {
-    backgroundColor: "#fff",
-    borderRadius: 22,
-    padding: 17,
-    shadowColor: "#000",
-    shadowOpacity: 0.08,
-    shadowRadius: 6,
-    shadowOffset: {
-      width: 0,
-      height: 3,
-    },
-    elevation: 3,
+  gameBox: {
+    width: "94%",
+    maxHeight: "86%",
+    backgroundColor: "#10161D",
+    borderRadius: 26,
+    borderWidth: 1,
+    borderColor: "#26313C",
+    padding: 18,
   },
 
   gameTitle: {
-    fontSize: 21,
+    color: "#F4F6F8",
+    fontSize: 22,
     fontWeight: "900",
-    color: "#173e61",
-    marginBottom: 8,
-  },
-
-  gameText: {
-    color: "#41596c",
-    fontSize: 15,
-    marginBottom: 12,
-  },
-
-  gameInput: {
-    height: 48,
-    borderRadius: 15,
-    borderWidth: 1,
-    borderColor: "#b9d7ef",
-    backgroundColor: "#f5faff",
-    paddingHorizontal: 14,
-    color: "#111827",
-    fontSize: 16,
-    marginBottom: 10,
+    textAlign: "center",
+    marginBottom: 15,
   },
 
   gameButton: {
-    height: 47,
-    backgroundColor: "#1976c9",
-    borderRadius: 15,
-    alignItems: "center",
-    justifyContent: "center",
-    marginBottom: 9,
+    backgroundColor: "#182129",
+    borderRadius: 16,
+    paddingVertical: 14,
+    paddingHorizontal: 16,
+    marginVertical: 5,
+    borderWidth: 1,
+    borderColor: "#26323D",
   },
 
   gameButtonText: {
-    color: "#fff",
-    fontWeight: "900",
-    fontSize: 15,
-  },
-
-  secondaryButton: {
-    height: 45,
-    borderRadius: 15,
-    backgroundColor: "#e6f3ff",
-    alignItems: "center",
-    justifyContent: "center",
-    marginTop: 8,
-  },
-
-  secondaryButtonText: {
-    color: "#1976c9",
-    fontWeight: "900",
-    fontSize: 14,
-  },
-
-  bigGameButton: {
-    height: 130,
-    borderRadius: 25,
-    backgroundColor: "#1976c9",
-    alignItems: "center",
-    justifyContent: "center",
-  },
-
-  bigGameButtonText: {
-    color: "#fff",
-    fontSize: 25,
-    fontWeight: "900",
-  },
-
-  choiceRow: {
-    flexDirection: "row",
-    justifyContent: "space-around",
-  },
-
-  choiceButton: {
-    width: 75,
-    height: 75,
-    borderRadius: 20,
-    backgroundColor: "#e8f5ff",
-    alignItems: "center",
-    justifyContent: "center",
-  },
-
-  choiceText: {
-    fontSize: 36,
-  },
-
-  memoryGrid: {
-    flexDirection: "row",
-    flexWrap: "wrap",
-    justifyContent: "center",
-  },
-
-  memoryCard: {
-    width: 62,
-    height: 62,
-    margin: 4,
-    borderRadius: 14,
-    backgroundColor: "#dceeff",
-    alignItems: "center",
-    justifyContent: "center",
-  },
-
-  memoryText: {
-    fontSize: 29,
-  },
-
-  targetArea: {
-    height: 270,
-    borderRadius: 20,
-    backgroundColor: "#e8f5ff",
-    position: "relative",
-    overflow: "hidden",
-  },
-
-  target: {
-    position: "absolute",
-    width: 55,
-    height: 55,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-
-  targetText: {
-    fontSize: 43,
-  },
-
-  snakeBoard: {
-    height: 210,
-    borderRadius: 20,
-    backgroundColor: "#e8f5ff",
-    alignItems: "center",
-    justifyContent: "center",
-    marginBottom: 12,
-  },
-
-  snakeEmoji: {
-    fontSize: 55,
-  },
-
-  directionGrid: {
-    flexDirection: "row",
-    flexWrap: "wrap",
-    justifyContent: "center",
-    gap: 8,
-  },
-
-  directionButton: {
-    width: 70,
-    height: 50,
-    borderRadius: 15,
-    backgroundColor: "#dceeff",
-    alignItems: "center",
-    justifyContent: "center",
-  },
-
-  directionText: {
-    fontSize: 22,
-  },
-
-  moreButton: {
-    marginHorizontal: 14,
-    marginTop: 10,
-    height: 54,
-    borderRadius: 17,
-    backgroundColor: "#fff",
-    flexDirection: "row",
-    alignItems: "center",
-    paddingHorizontal: 15,
-  },
-
-  moreButtonIcon: {
-    fontSize: 22,
-    width: 38,
-  },
-
-  moreButtonText: {
-    color: "#173e61",
+    color: "#E8EDF1",
+    textAlign: "center",
     fontSize: 16,
     fontWeight: "800",
   },
 
-  savedTitle: {
-    fontSize: 18,
+  closeGame: {
+    marginTop: 12,
+    backgroundColor: "#B8F500",
+    borderRadius: 15,
+    paddingVertical: 13,
+    alignItems: "center",
+  },
+
+  closeGameText: {
+    color: "#080B10",
     fontWeight: "900",
-    color: "#173e61",
-    marginHorizontal: 15,
-    marginTop: 20,
+  },
+
+  photoImage: {
+    width: "100%",
+    height: 360,
+    resizeMode: "contain",
+    borderRadius: 18,
+    backgroundColor: "#080B10",
+  },
+
+  photoButtons: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    marginTop: 12,
+  },
+
+  photoButton: {
+    flex: 1,
+    marginHorizontal: 4,
+    backgroundColor: "#182129",
+    borderRadius: 14,
+    paddingVertical: 12,
+    alignItems: "center",
+  },
+
+  photoButtonText: {
+    color: "#E8EDF1",
+    fontWeight: "800",
+  },
+
+  savedItem: {
+    backgroundColor: "#182129",
+    borderRadius: 15,
+    padding: 14,
     marginBottom: 8,
   },
 
-  savedList: {
-    marginHorizontal: 14,
-  },
-
-  savedRow: {
-    flexDirection: "row",
-    marginBottom: 7,
-  },
-
-  savedChat: {
-    flex: 1,
-    minHeight: 55,
-    backgroundColor: "#fff",
-    borderRadius: 16,
-    paddingHorizontal: 14,
-    justifyContent: "center",
-  },
-
-  savedChatTitle: {
-    color: "#173e61",
+  savedTitle: {
+    color: "#F2F5F7",
+    fontSize: 16,
     fontWeight: "800",
-    fontSize: 15,
   },
 
-  savedChatDate: {
-    color: "#7990a3",
-    fontSize: 11,
-    marginTop: 2,
-  },
-
-  deleteButton: {
-    width: 52,
-    marginLeft: 6,
-    borderRadius: 16,
-    backgroundColor: "#fff",
-    alignItems: "center",
-    justifyContent: "center",
-  },
-
-  deleteText: {
-    fontSize: 20,
-  },
-
-  emptyText: {
-    marginHorizontal: 16,
-    color: "#59758c",
-    fontSize: 14,
-  },
-
-  photoOverlay: {
-    flex: 1,
-    backgroundColor: "rgba(0,0,0,0.55)",
-    justifyContent: "center",
-    padding: 12,
-  },
-
-  photoModal: {
-    backgroundColor: "#dceeff",
-    borderRadius: 25,
-    overflow: "hidden",
-    maxHeight: "90%",
-  },
-
-  photoPreview: {
-    width: "100%",
-    height: 430,
-    backgroundColor: "#101820",
-  },
-
-  photoActions: {
-    flexDirection: "row",
-    padding: 10,
-    gap: 8,
-  },
-
-  photoAction: {
-    flex: 1,
-    height: 47,
-    backgroundColor: "#fff",
-    borderRadius: 15,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-
-  photoActionText: {
-    color: "#1976c9",
-    fontWeight: "900",
-  },
-
-  closePhotoButton: {
-    margin: 10,
-    height: 48,
-    borderRadius: 15,
-    backgroundColor: "#1976c9",
-    alignItems: "center",
-    justifyContent: "center",
-  },
-
-  closePhotoButtonText: {
-    color: "#fff",
-    fontWeight: "900",
-    fontSize: 15,
+  savedDate: {
+    color: "#75808C",
+    fontSize: 12,
+    marginTop: 4,
   },
 });

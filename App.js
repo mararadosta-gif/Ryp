@@ -1687,7 +1687,7 @@ export default function App() {
         </View>
       </View>    </Modal>
       </KeyboardAvoidingView>
-  </View>
+  </SafeAreaView>
 );
 }
 

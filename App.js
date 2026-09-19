@@ -761,6 +761,8 @@ export default function App() {
 
   const [moreVisible, setMoreVisible] =
     useState(false);
+  
+  const [moreModal, setMoreModal] = useState(null);
 
   const [settingsVisible, setSettingsVisible] =
     useState(false);

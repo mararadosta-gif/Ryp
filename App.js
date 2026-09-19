@@ -6,7 +6,6 @@ import {
   Image,
   TextInput,
   TouchableOpacity,
-  ScrollView,
   StyleSheet,
   Linking,
   KeyboardAvoidingView,
@@ -14,6 +13,7 @@ import {
   Alert,
   Modal,
   FlatList,
+  ScrollView,
 } from "react-native";
 
 import * as ImagePicker from "expo-image-picker";
@@ -23,22 +23,19 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 const API_URL = "https://ryp-hpvu.onrender.com/chat";
 const CHAT_KEY = "ryp_saved_chats_v5";
 
-const RYP_IMAGE = require("./assets/ryp.png");
+const RYP_IMAGE = require("./file_00000000e44c81f4b86b60e21106fc88.png");
 
 function makeId() {
   return Date.now().toString() + Math.random().toString(36).slice(2);
 }
 
-function extractLinks(text) {
-  if (!text) return [];
-  return text.match(/https?:\/\/[^\s]+/g) || [];
-}
+/* =========================
+   TEXT + LINKS
+========================= */
 
 function LinkText({ text }) {
-  const links = extractLinks(text);
-
-  if (!links.length) {
-    return <Text style={styles.messageText}>{text}</Text>;
+  if (!text) {
+    return null;
   }
 
   const parts = text.split(/(https?:\/\/[^\s]+)/g);
@@ -46,12 +43,14 @@ function LinkText({ text }) {
   return (
     <Text style={styles.messageText}>
       {parts.map((part, index) => {
-        if (part.match(/^https?:\/\//)) {
+        if (/^https?:\/\//.test(part)) {
           return (
             <Text
               key={index}
               style={styles.linkText}
-              onPress={() => Linking.openURL(part.replace(/[.,!?)]$/, ""))}
+              onPress={() =>
+                Linking.openURL(part.replace(/[.,!?)]$/, ""))
+              }
             >
               {part}
             </Text>
@@ -71,7 +70,9 @@ function LinkText({ text }) {
 function NumberGame() {
   const [number, setNumber] = useState(null);
   const [guess, setGuess] = useState("");
-  const [message, setMessage] = useState("Myslím si číslo od 1 do 100 😈");
+  const [message, setMessage] = useState(
+    "Myslím si číslo od 1 do 100 😈"
+  );
 
   const start = () => {
     setNumber(Math.floor(Math.random() * 100) + 1);
@@ -93,21 +94,18 @@ function NumberGame() {
     }
 
     if (n === number) {
-      setMessage("🎉 Trefa! Tak tohle bylo podezřele dobrý.");
+      setMessage("🎉 Trefa!");
       setNumber(null);
       return;
     }
 
-    if (n < number) {
-      setMessage("Moc málo 😏");
-    } else {
-      setMessage("Moc 😈");
-    }
+    setMessage(n < number ? "Moc málo 😏" : "Moc 😈");
   };
 
   return (
     <View style={styles.gameCard}>
       <Text style={styles.gameTitle}>🎯 Hádej číslo</Text>
+
       <Text style={styles.gameText}>{message}</Text>
 
       <TextInput
@@ -119,12 +117,20 @@ function NumberGame() {
         placeholderTextColor="#888"
       />
 
-      <TouchableOpacity style={styles.gameButton} onPress={check}>
+      <TouchableOpacity
+        style={styles.gameButton}
+        onPress={check}
+      >
         <Text style={styles.gameButtonText}>HÁDAT</Text>
       </TouchableOpacity>
 
-      <TouchableOpacity style={styles.secondaryButton} onPress={start}>
-        <Text style={styles.secondaryButtonText}>NOVÁ HRA</Text>
+      <TouchableOpacity
+        style={styles.secondaryButton}
+        onPress={start}
+      >
+        <Text style={styles.secondaryButtonText}>
+          NOVÁ HRA
+        </Text>
       </TouchableOpacity>
     </View>
   );
@@ -145,12 +151,14 @@ function WordGame() {
   const [word, setWord] = useState(
     words[Math.floor(Math.random() * words.length)]
   );
+
   const [guess, setGuess] = useState("");
   const [message, setMessage] = useState("Uhádni slovo 😈");
 
   const newWord = () => {
-    const next = words[Math.floor(Math.random() * words.length)];
-    setWord(next);
+    setWord(
+      words[Math.floor(Math.random() * words.length)]
+    );
     setGuess("");
     setMessage("Nové slovo. Tak makej 😂");
   };
@@ -166,6 +174,7 @@ function WordGame() {
   return (
     <View style={styles.gameCard}>
       <Text style={styles.gameTitle}>🔤 Hádej slovo</Text>
+
       <Text style={styles.gameText}>{message}</Text>
 
       <TextInput
@@ -177,12 +186,22 @@ function WordGame() {
         autoCapitalize="characters"
       />
 
-      <TouchableOpacity style={styles.gameButton} onPress={check}>
-        <Text style={styles.gameButtonText}>ZKONTROLOVAT</Text>
+      <TouchableOpacity
+        style={styles.gameButton}
+        onPress={check}
+      >
+        <Text style={styles.gameButtonText}>
+          ZKONTROLOVAT
+        </Text>
       </TouchableOpacity>
 
-      <TouchableOpacity style={styles.secondaryButton} onPress={newWord}>
-        <Text style={styles.secondaryButtonText}>NOVÉ SLOVO</Text>
+      <TouchableOpacity
+        style={styles.secondaryButton}
+        onPress={newWord}
+      >
+        <Text style={styles.secondaryButtonText}>
+          NOVÉ SLOVO
+        </Text>
       </TouchableOpacity>
     </View>
   );
@@ -190,7 +209,9 @@ function WordGame() {
 
 function ReactionGame() {
   const [running, setRunning] = useState(false);
-  const [message, setMessage] = useState("Klikni a čekej...");
+  const [message, setMessage] = useState(
+    "Klikni a čekej..."
+  );
   const [startedAt, setStartedAt] = useState(null);
 
   const start = () => {
@@ -218,17 +239,20 @@ function ReactionGame() {
       return;
     }
 
-    const time = Date.now() - startedAt;
-    setMessage(`⚡ ${time} ms`);
+    setMessage(`${Date.now() - startedAt} ms ⚡`);
     setRunning(false);
   };
 
   return (
     <View style={styles.gameCard}>
       <Text style={styles.gameTitle}>⚡ Reakce</Text>
+
       <Text style={styles.gameText}>{message}</Text>
 
-      <TouchableOpacity style={styles.bigGameButton} onPress={tap}>
+      <TouchableOpacity
+        style={styles.bigGameButton}
+        onPress={tap}
+      >
         <Text style={styles.bigGameButtonText}>
           {running ? "KLIKNI!" : "START"}
         </Text>
@@ -242,7 +266,8 @@ function RpsGame() {
 
   const play = (player) => {
     const options = ["kámen", "nůžky", "papír"];
-    const bot = options[Math.floor(Math.random() * 3)];
+    const bot =
+      options[Math.floor(Math.random() * options.length)];
 
     if (player === bot) {
       setResult(`Já: ${bot}. Remíza 😂`);
@@ -255,13 +280,18 @@ function RpsGame() {
       (player === "papír" && bot === "kámen");
 
     setResult(
-      `Já: ${bot}. ${win ? "Vyhrál jsi 😏" : "Prohrál jsi 😂"}`
+      `Já: ${bot}. ${
+        win ? "Vyhrál jsi 😏" : "Prohrál jsi 😂"
+      }`
     );
   };
 
   return (
     <View style={styles.gameCard}>
-      <Text style={styles.gameTitle}>✊ Kámen, nůžky, papír</Text>
+      <Text style={styles.gameTitle}>
+        ✊ Kámen, nůžky, papír
+      </Text>
+
       <Text style={styles.gameText}>{result}</Text>
 
       <View style={styles.choiceRow}>
@@ -327,11 +357,20 @@ function MemoryGame() {
     setOpen(next);
 
     if (next.length === 2) {
-      const first = cards.find((c) => c.id === next[0]);
-      const second = cards.find((c) => c.id === next[1]);
+      const first = cards.find(
+        (c) => c.id === next[0]
+      );
 
-      if (first.symbol === second.symbol) {
-        setMatched((m) => [...m, first.id, second.id]);
+      const second = cards.find(
+        (c) => c.id === next[1]
+      );
+
+      if (first && second && first.symbol === second.symbol) {
+        setMatched((m) => [
+          ...m,
+          first.id,
+          second.id,
+        ]);
         setOpen([]);
       } else {
         setTimeout(() => {
@@ -348,7 +387,8 @@ function MemoryGame() {
       <View style={styles.memoryGrid}>
         {cards.map((card) => {
           const visible =
-            open.includes(card.id) || matched.includes(card.id);
+            open.includes(card.id) ||
+            matched.includes(card.id);
 
           return (
             <TouchableOpacity
@@ -364,8 +404,13 @@ function MemoryGame() {
         })}
       </View>
 
-      <TouchableOpacity style={styles.secondaryButton} onPress={newGame}>
-        <Text style={styles.secondaryButtonText}>NOVÁ HRA</Text>
+      <TouchableOpacity
+        style={styles.secondaryButton}
+        onPress={newGame}
+      >
+        <Text style={styles.secondaryButtonText}>
+          NOVÁ HRA
+        </Text>
       </TouchableOpacity>
     </View>
   );
@@ -373,6 +418,7 @@ function MemoryGame() {
 
 function TargetGame() {
   const [score, setScore] = useState(0);
+
   const [position, setPosition] = useState({
     top: 80,
     left: 90,
@@ -380,6 +426,7 @@ function TargetGame() {
 
   const hit = () => {
     setScore((s) => s + 1);
+
     setPosition({
       top: 30 + Math.random() * 180,
       left: 20 + Math.random() * 210,
@@ -389,7 +436,10 @@ function TargetGame() {
   return (
     <View style={styles.gameCard}>
       <Text style={styles.gameTitle}>🎯 Terč</Text>
-      <Text style={styles.gameText}>Skóre: {score}</Text>
+
+      <Text style={styles.gameText}>
+        Skóre: {score}
+      </Text>
 
       <View style={styles.targetArea}>
         <TouchableOpacity
@@ -411,7 +461,8 @@ function TargetGame() {
 
 function SnakeGame() {
   const [score, setScore] = useState(0);
-  const [direction, setDirection] = useState("right");
+  const [direction, setDirection] =
+    useState("doprava");
 
   const move = (dir) => {
     setDirection(dir);
@@ -421,6 +472,7 @@ function SnakeGame() {
   return (
     <View style={styles.gameCard}>
       <Text style={styles.gameTitle}>🐍 Had</Text>
+
       <Text style={styles.gameText}>
         Směr: {direction} · Skóre: {score}
       </Text>
@@ -469,15 +521,42 @@ function SnakeGame() {
 function GamesMenu({ visible, onClose }) {
   const [game, setGame] = useState("number");
 
+  const games = [
+    ["number", "🎯 Číslo"],
+    ["word", "🔤 Slovo"],
+    ["reaction", "⚡ Reakce"],
+    ["rps", "✊ RPS"],
+    ["memory", "🧠 Pexeso"],
+    ["target", "🎯 Terč"],
+    ["snake", "🐍 Had"],
+  ];
+
   const renderGame = () => {
-    if (game === "number") return <NumberGame />;
-    if (game === "word") return <WordGame />;
-    if (game === "reaction") return <ReactionGame />;
-    if (game === "rps") return <RpsGame />;
-    if (game === "memory") return <MemoryGame />;
-    if (game === "target") return <TargetGame />;
-    if (game === "snake") return <SnakeGame />;
-    return null;
+    switch (game) {
+      case "number":
+        return <NumberGame />;
+
+      case "word":
+        return <WordGame />;
+
+      case "reaction":
+        return <ReactionGame />;
+
+      case "rps":
+        return <RpsGame />;
+
+      case "memory":
+        return <MemoryGame />;
+
+      case "target":
+        return <TargetGame />;
+
+      case "snake":
+        return <SnakeGame />;
+
+      default:
+        return null;
+    }
   };
 
   return (
@@ -490,7 +569,9 @@ function GamesMenu({ visible, onClose }) {
       <View style={styles.modalOverlay}>
         <View style={styles.gamesModal}>
           <View style={styles.modalHeader}>
-            <Text style={styles.modalTitle}>🎮 Minihry</Text>
+            <Text style={styles.modalTitle}>
+              🎮 Minihry
+            </Text>
 
             <TouchableOpacity onPress={onClose}>
               <Text style={styles.closeText}>✕</Text>
@@ -502,129 +583,33 @@ function GamesMenu({ visible, onClose }) {
             showsHorizontalScrollIndicator={false}
             contentContainerStyle={styles.gameTabs}
           >
-            <TouchableOpacity
-              style={[
-                styles.gameTab,
-                game === "number" && styles.gameTabActive,
-              ]}
-              onPress={() => setGame("number")}
-            >
-              <Text
+            {games.map(([id, title]) => (
+              <TouchableOpacity
+                key={id}
                 style={[
-                  styles.gameTabText,
-                  game === "number" && styles.gameTabTextActive,
+                  styles.gameTab,
+                  game === id && styles.gameTabActive,
                 ]}
+                onPress={() => setGame(id)}
               >
-                🎯 Číslo
-              </Text>
-            </TouchableOpacity>
-
-            <TouchableOpacity
-              style={[
-                styles.gameTab,
-                game === "word" && styles.gameTabActive,
-              ]}
-              onPress={() => setGame("word")}
-            >
-              <Text
-                style={[
-                  styles.gameTabText,
-                  game === "word" && styles.gameTabTextActive,
-                ]}
-              >
-                🔤 Slovo
-              </Text>
-            </TouchableOpacity>
-
-            <TouchableOpacity
-              style={[
-                styles.gameTab,
-                game === "reaction" && styles.gameTabActive,
-              ]}
-              onPress={() => setGame("reaction")}
-            >
-              <Text
-                style={[
-                  styles.gameTabText,
-                  game === "reaction" && styles.gameTabTextActive,
-                ]}
-              >
-                ⚡ Reakce
-              </Text>
-            </TouchableOpacity>
-
-            <TouchableOpacity
-              style={[
-                styles.gameTab,
-                game === "rps" && styles.gameTabActive,
-              ]}
-              onPress={() => setGame("rps")}
-            >
-              <Text
-                style={[
-                  styles.gameTabText,
-                  game === "rps" && styles.gameTabTextActive,
-                ]}
-              >
-                ✊ RPS
-              </Text>
-            </TouchableOpacity>
-
-            <TouchableOpacity
-              style={[
-                styles.gameTab,
-                game === "memory" && styles.gameTabActive,
-              ]}
-              onPress={() => setGame("memory")}
-            >
-              <Text
-                style={[
-                  styles.gameTabText,
-                  game === "memory" && styles.gameTabTextActive,
-                ]}
-              >
-                🧠 Pexeso
-              </Text>
-            </TouchableOpacity>
-
-            <TouchableOpacity
-              style={[
-                styles.gameTab,
-                game === "target" && styles.gameTabActive,
-              ]}
-              onPress={() => setGame("target")}
-            >
-              <Text
-                style={[
-                  styles.gameTabText,
-                  game === "target" && styles.gameTabTextActive,
-                ]}
-              >
-                🎯 Terč
-              </Text>
-            </TouchableOpacity>
-
-            <TouchableOpacity
-              style={[
-                styles.gameTab,
-                game === "snake" && styles.gameTabActive,
-              ]}
-              onPress={() => setGame("snake")}
-            >
-              <Text
-                style={[
-                  styles.gameTabText,
-                  game === "snake" && styles.gameTabTextActive,
-                ]}
-              >
-                🐍 Had
-              </Text>
-            </TouchableOpacity>
+                <Text
+                  style={[
+                    styles.gameTabText,
+                    game === id &&
+                      styles.gameTabTextActive,
+                  ]}
+                >
+                  {title}
+                </Text>
+              </TouchableOpacity>
+            ))}
           </ScrollView>
 
           <ScrollView
             style={styles.gameScroll}
-            contentContainerStyle={styles.gameScrollContent}
+            contentContainerStyle={
+              styles.gameScrollContent
+            }
             showsVerticalScrollIndicator={false}
           >
             {renderGame()}
@@ -636,7 +621,7 @@ function GamesMenu({ visible, onClose }) {
 }
 
 /* =========================
-   MAIN APP
+   APP
 ========================= */
 
 export default function App() {
@@ -644,20 +629,23 @@ export default function App() {
     {
       id: "welcome",
       role: "assistant",
-      text: "Čau 😈 Já jsem Rýp. Tak co dneska vyřešíme?",
+      text:
+        "Čau 😈 Já jsem Rýp. Tak co dneska vyřešíme?",
     },
   ]);
 
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
 
-  const [gamesVisible, setGamesVisible] = useState(false);
-  const [moreVisible, setMoreVisible] = useState(false);
+  const [gamesVisible, setGamesVisible] =
+    useState(false);
+
+  const [moreVisible, setMoreVisible] =
+    useState(false);
 
   const [savedChats, setSavedChats] = useState([]);
 
   const [photoUri, setPhotoUri] = useState(null);
-  const [editingPhoto, setEditingPhoto] = useState(false);
 
   useEffect(() => {
     loadChats();
@@ -665,7 +653,8 @@ export default function App() {
 
   const loadChats = async () => {
     try {
-      const saved = await AsyncStorage.getItem(CHAT_KEY);
+      const saved =
+        await AsyncStorage.getItem(CHAT_KEY);
 
       if (saved) {
         setSavedChats(JSON.parse(saved));
@@ -675,19 +664,26 @@ export default function App() {
     }
   };
 
-  const saveCurrentChat = async (newMessages = messages) => {
+  const saveCurrentChat = async (
+    newMessages = messages
+  ) => {
     try {
-      if (!newMessages || newMessages.length <= 1) {
+      if (
+        !newMessages ||
+        newMessages.length <= 1
+      ) {
         return;
       }
 
-      const firstUserMessage = newMessages.find(
-        (m) => m.role === "user"
-      );
+      const firstUserMessage =
+        newMessages.find(
+          (m) => m.role === "user"
+        );
 
       const title =
-        firstUserMessage?.text?.trim().slice(0, 35) ||
-        "Nový chat";
+        firstUserMessage?.text
+          ?.trim()
+          .slice(0, 35) || "Nový chat";
 
       const chat = {
         id: makeId(),
@@ -696,12 +692,23 @@ export default function App() {
         createdAt: Date.now(),
       };
 
-      const current = await AsyncStorage.getItem(CHAT_KEY);
-      const existing = current ? JSON.parse(current) : [];
+      const current =
+        await AsyncStorage.getItem(CHAT_KEY);
 
-      const updated = [chat, ...existing].slice(0, 30);
+      const existing = current
+        ? JSON.parse(current)
+        : [];
 
-      await AsyncStorage.setItem(CHAT_KEY, JSON.stringify(updated));
+      const updated = [
+        chat,
+        ...existing,
+      ].slice(0, 30);
+
+      await AsyncStorage.setItem(
+        CHAT_KEY,
+        JSON.stringify(updated)
+      );
+
       setSavedChats(updated);
     } catch (error) {
       console.log("SAVE CHAT ERROR", error);
@@ -713,7 +720,7 @@ export default function App() {
     setMoreVisible(false);
   };
 
-  const deleteChat = async (id) => {
+  const deleteChat = (id) => {
     Alert.alert(
       "Smazat chat?",
       "Tenhle chat fakt zmizí.",
@@ -726,11 +733,13 @@ export default function App() {
           text: "Smazat",
           style: "destructive",
           onPress: async () => {
-            const updated = savedChats.filter(
-              (chat) => chat.id !== id
-            );
+            const updated =
+              savedChats.filter(
+                (chat) => chat.id !== id
+              );
 
             setSavedChats(updated);
+
             await AsyncStorage.setItem(
               CHAT_KEY,
               JSON.stringify(updated)
@@ -746,7 +755,8 @@ export default function App() {
       {
         id: "welcome-" + Date.now(),
         role: "assistant",
-        text: "Nový chat 😈 Tak povídej.",
+        text:
+          "Nový chat 😈 Tak povídej.",
       },
     ]);
 
@@ -767,28 +777,40 @@ export default function App() {
       text,
     };
 
-    const updatedMessages = [...messages, userMessage];
+    const updatedMessages = [
+      ...messages,
+      userMessage,
+    ];
 
     setMessages(updatedMessages);
     setInput("");
     setLoading(true);
 
     try {
-      const response = await fetch(API_URL, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          messages: updatedMessages.map((message) => ({
-            role: message.role,
-            content: message.text,
-          })),
-        }),
-      });
+      const response = await fetch(
+        API_URL,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type":
+              "application/json",
+          },
+          body: JSON.stringify({
+            messages:
+              updatedMessages.map(
+                (message) => ({
+                  role: message.role,
+                  content: message.text,
+                })
+              ),
+          }),
+        }
+      );
 
       if (!response.ok) {
-        throw new Error(`HTTP ${response.status}`);
+        throw new Error(
+          `HTTP ${response.status}`
+        );
       }
 
       const data = await response.json();
@@ -812,7 +834,9 @@ export default function App() {
 
       setMessages(finalMessages);
 
-      await saveCurrentChat(finalMessages);
+      await saveCurrentChat(
+        finalMessages
+      );
     } catch (error) {
       console.log("CHAT ERROR", error);
 
@@ -830,6 +854,10 @@ export default function App() {
     }
   };
 
+  /* =========================
+     CAMERA
+  ========================= */
+
   const openCamera = async () => {
     try {
       const permission =
@@ -845,18 +873,35 @@ export default function App() {
 
       const result =
         await ImagePicker.launchCameraAsync({
-          mediaTypes: ["images"],
+          mediaTypes:
+            ImagePicker.MediaTypeOptions.Images,
           quality: 0.85,
         });
 
-      if (!result.canceled && result.assets?.[0]?.uri) {
-        setPhotoUri(result.assets[0].uri);
+      if (
+        !result.canceled &&
+        result.assets?.[0]?.uri
+      ) {
+        setPhotoUri(
+          result.assets[0].uri
+        );
       }
     } catch (error) {
-      console.log("CAMERA ERROR", error);
-      Alert.alert("Chyba", "Kameru se nepodařilo otevřít.");
+      console.log(
+        "CAMERA ERROR",
+        error
+      );
+
+      Alert.alert(
+        "Chyba",
+        "Kameru se nepodařilo otevřít."
+      );
     }
   };
+
+  /* =========================
+     GALLERY
+  ========================= */
 
   const openGallery = async () => {
     try {
@@ -873,18 +918,35 @@ export default function App() {
 
       const result =
         await ImagePicker.launchImageLibraryAsync({
-          mediaTypes: ["images"],
+          mediaTypes:
+            ImagePicker.MediaTypeOptions.Images,
           quality: 0.85,
         });
 
-      if (!result.canceled && result.assets?.[0]?.uri) {
-        setPhotoUri(result.assets[0].uri);
+      if (
+        !result.canceled &&
+        result.assets?.[0]?.uri
+      ) {
+        setPhotoUri(
+          result.assets[0].uri
+        );
       }
     } catch (error) {
-      console.log("GALLERY ERROR", error);
-      Alert.alert("Chyba", "Galerii se nepodařilo otevřít.");
+      console.log(
+        "GALLERY ERROR",
+        error
+      );
+
+      Alert.alert(
+        "Chyba",
+        "Galerii se nepodařilo otevřít."
+      );
     }
   };
+
+  /* =========================
+     PHOTO EDIT
+  ========================= */
 
   const rotatePhoto = async () => {
     if (!photoUri) return;
@@ -893,20 +955,20 @@ export default function App() {
       const result =
         await ImageManipulator.manipulateAsync(
           photoUri,
-          [
-            {
-              rotate: 90,
-            },
-          ],
+          [{ rotate: 90 }],
           {
             compress: 0.9,
-            format: ImageManipulator.SaveFormat.JPEG,
+            format:
+              ImageManipulator.SaveFormat.JPEG,
           }
         );
 
       setPhotoUri(result.uri);
     } catch (error) {
-      console.log("ROTATE ERROR", error);
+      console.log(
+        "ROTATE ERROR",
+        error
+      );
     }
   };
 
@@ -919,29 +981,35 @@ export default function App() {
           photoUri,
           [
             {
-              flip: ImageManipulator.FlipType.Horizontal,
+              flip:
+                ImageManipulator.FlipType
+                  .Horizontal,
             },
           ],
           {
             compress: 0.9,
-            format: ImageManipulator.SaveFormat.JPEG,
+            format:
+              ImageManipulator.SaveFormat.JPEG,
           }
         );
 
       setPhotoUri(result.uri);
     } catch (error) {
-      console.log("FLIP ERROR", error);
+      console.log(
+        "FLIP ERROR",
+        error
+      );
     }
   };
 
   const closePhoto = () => {
     setPhotoUri(null);
-    setEditingPhoto(false);
   };
 
   return (
     <SafeAreaView style={styles.safe}>
       <View style={styles.container}>
+
         {/* HEADER */}
 
         <View style={styles.header}>
@@ -952,7 +1020,10 @@ export default function App() {
           />
 
           <View style={styles.headerTextBox}>
-            <Text style={styles.headerTitle}>Rýp</Text>
+            <Text style={styles.headerTitle}>
+              Rýp
+            </Text>
+
             <Text style={styles.headerSubtitle}>
               AI kámoš, co se s tebou nemaže 😈
             </Text>
@@ -964,17 +1035,26 @@ export default function App() {
         <KeyboardAvoidingView
           style={styles.chatContainer}
           behavior={
-            Platform.OS === "ios" ? "padding" : undefined
+            Platform.OS === "ios"
+              ? "padding"
+              : undefined
           }
         >
           <FlatList
             data={messages}
-            keyExtractor={(item) => item.id}
+            keyExtractor={(item) =>
+              item.id
+            }
             style={styles.messageList}
-            contentContainerStyle={styles.messageContent}
-            showsVerticalScrollIndicator={false}
+            contentContainerStyle={
+              styles.messageContent
+            }
+            showsVerticalScrollIndicator={
+              false
+            }
             renderItem={({ item }) => {
-              const isUser = item.role === "user";
+              const isUser =
+                item.role === "user";
 
               return (
                 <View
@@ -993,7 +1073,9 @@ export default function App() {
                         : styles.assistantBubble,
                     ]}
                   >
-                    <LinkText text={item.text} />
+                    <LinkText
+                      text={item.text}
+                    />
                   </View>
                 </View>
               );
@@ -1015,7 +1097,11 @@ export default function App() {
               style={styles.inputIcon}
               onPress={openCamera}
             >
-              <Text style={styles.inputIconText}>📷</Text>
+              <Text
+                style={styles.inputIconText}
+              >
+                📷
+              </Text>
             </TouchableOpacity>
 
             <TextInput
@@ -1026,7 +1112,6 @@ export default function App() {
               placeholderTextColor="#7d8794"
               multiline
               maxLength={2000}
-              onSubmitEditing={sendMessage}
             />
 
             <TouchableOpacity
@@ -1034,7 +1119,11 @@ export default function App() {
               onPress={sendMessage}
               disabled={loading}
             >
-              <Text style={styles.sendButtonText}>➤</Text>
+              <Text
+                style={styles.sendButtonText}
+              >
+                ➤
+              </Text>
             </TouchableOpacity>
           </View>
         </KeyboardAvoidingView>
@@ -1049,32 +1138,56 @@ export default function App() {
               setMoreVisible(false);
             }}
           >
-            <Text style={styles.navIcon}>💬</Text>
-            <Text style={styles.navText}>Chat</Text>
+            <Text style={styles.navIcon}>
+              💬
+            </Text>
+
+            <Text style={styles.navText}>
+              Chat
+            </Text>
           </TouchableOpacity>
 
           <TouchableOpacity
             style={styles.navButton}
-            onPress={() => setGamesVisible(true)}
+            onPress={() =>
+              setGamesVisible(true)
+            }
           >
-            <Text style={styles.navIcon}>🎮</Text>
-            <Text style={styles.navText}>Hry</Text>
+            <Text style={styles.navIcon}>
+              🎮
+            </Text>
+
+            <Text style={styles.navText}>
+              Hry
+            </Text>
           </TouchableOpacity>
 
           <TouchableOpacity
             style={styles.navButton}
             onPress={openGallery}
           >
-            <Text style={styles.navIcon}>🖼️</Text>
-            <Text style={styles.navText}>Foto</Text>
+            <Text style={styles.navIcon}>
+              🖼️
+            </Text>
+
+            <Text style={styles.navText}>
+              Foto
+            </Text>
           </TouchableOpacity>
 
           <TouchableOpacity
             style={styles.navButton}
-            onPress={() => setMoreVisible(true)}
+            onPress={() =>
+              setMoreVisible(true)
+            }
           >
-            <Text style={styles.navIcon}>☰</Text>
-            <Text style={styles.navText}>Další</Text>
+            <Text style={styles.navIcon}>
+              ☰
+            </Text>
+
+            <Text style={styles.navText}>
+              Další
+            </Text>
           </TouchableOpacity>
         </View>
       </View>
@@ -1083,7 +1196,9 @@ export default function App() {
 
       <GamesMenu
         visible={gamesVisible}
-        onClose={() => setGamesVisible(false)}
+        onClose={() =>
+          setGamesVisible(false)
+        }
       />
 
       {/* MORE */}
@@ -1092,17 +1207,25 @@ export default function App() {
         visible={moreVisible}
         animationType="slide"
         transparent
-        onRequestClose={() => setMoreVisible(false)}
+        onRequestClose={() =>
+          setMoreVisible(false)
+        }
       >
         <View style={styles.modalOverlay}>
           <View style={styles.moreModal}>
             <View style={styles.modalHeader}>
-              <Text style={styles.modalTitle}>Další</Text>
+              <Text style={styles.modalTitle}>
+                Další
+              </Text>
 
               <TouchableOpacity
-                onPress={() => setMoreVisible(false)}
+                onPress={() =>
+                  setMoreVisible(false)
+                }
               >
-                <Text style={styles.closeText}>✕</Text>
+                <Text style={styles.closeText}>
+                  ✕
+                </Text>
               </TouchableOpacity>
             </View>
 
@@ -1110,7 +1233,10 @@ export default function App() {
               style={styles.moreButton}
               onPress={newChat}
             >
-              <Text style={styles.moreButtonIcon}>➕</Text>
+              <Text style={styles.moreButtonIcon}>
+                ➕
+              </Text>
+
               <Text style={styles.moreButtonText}>
                 Nový chat
               </Text>
@@ -1120,7 +1246,10 @@ export default function App() {
               style={styles.moreButton}
               onPress={openCamera}
             >
-              <Text style={styles.moreButtonIcon}>📷</Text>
+              <Text style={styles.moreButtonIcon}>
+                📷
+              </Text>
+
               <Text style={styles.moreButtonText}>
                 Vyfotit
               </Text>
@@ -1130,7 +1259,10 @@ export default function App() {
               style={styles.moreButton}
               onPress={openGallery}
             >
-              <Text style={styles.moreButtonIcon}>🖼️</Text>
+              <Text style={styles.moreButtonIcon}>
+                🖼️
+              </Text>
+
               <Text style={styles.moreButtonText}>
                 Vybrat fotku
               </Text>
@@ -1147,33 +1279,51 @@ export default function App() {
             ) : (
               <FlatList
                 data={savedChats}
-                keyExtractor={(item) => item.id}
+                keyExtractor={(item) =>
+                  item.id
+                }
                 style={styles.savedList}
                 renderItem={({ item }) => (
                   <View style={styles.savedRow}>
                     <TouchableOpacity
                       style={styles.savedChat}
-                      onPress={() => openSavedChat(item)}
+                      onPress={() =>
+                        openSavedChat(item)
+                      }
                     >
                       <Text
-                        style={styles.savedChatTitle}
+                        style={
+                          styles.savedChatTitle
+                        }
                         numberOfLines={1}
                       >
                         {item.title}
                       </Text>
 
-                      <Text style={styles.savedChatDate}>
+                      <Text
+                        style={
+                          styles.savedChatDate
+                        }
+                      >
                         {new Date(
                           item.createdAt
-                        ).toLocaleDateString("cs-CZ")}
+                        ).toLocaleDateString(
+                          "cs-CZ"
+                        )}
                       </Text>
                     </TouchableOpacity>
 
                     <TouchableOpacity
-                      style={styles.deleteButton}
-                      onPress={() => deleteChat(item.id)}
+                      style={
+                        styles.deleteButton
+                      }
+                      onPress={() =>
+                        deleteChat(item.id)
+                      }
                     >
-                      <Text style={styles.deleteText}>
+                      <Text
+                        style={styles.deleteText}
+                      >
                         🗑️
                       </Text>
                     </TouchableOpacity>
@@ -1200,14 +1350,20 @@ export default function App() {
                 📸 Fotka
               </Text>
 
-              <TouchableOpacity onPress={closePhoto}>
-                <Text style={styles.closeText}>✕</Text>
+              <TouchableOpacity
+                onPress={closePhoto}
+              >
+                <Text style={styles.closeText}>
+                  ✕
+                </Text>
               </TouchableOpacity>
             </View>
 
             {photoUri && (
               <Image
-                source={{ uri: photoUri }}
+                source={{
+                  uri: photoUri,
+                }}
                 style={styles.photoPreview}
                 resizeMode="contain"
               />
@@ -1218,7 +1374,11 @@ export default function App() {
                 style={styles.photoAction}
                 onPress={rotatePhoto}
               >
-                <Text style={styles.photoActionText}>
+                <Text
+                  style={
+                    styles.photoActionText
+                  }
+                >
                   🔄 Otočit
                 </Text>
               </TouchableOpacity>
@@ -1227,7 +1387,11 @@ export default function App() {
                 style={styles.photoAction}
                 onPress={flipPhoto}
               >
-                <Text style={styles.photoActionText}>
+                <Text
+                  style={
+                    styles.photoActionText
+                  }
+                >
                   ↔️ Překlopit
                 </Text>
               </TouchableOpacity>
@@ -1237,7 +1401,11 @@ export default function App() {
               style={styles.closePhotoButton}
               onPress={closePhoto}
             >
-              <Text style={styles.closePhotoButtonText}>
+              <Text
+                style={
+                  styles.closePhotoButtonText
+                }
+              >
                 HOTOVO
               </Text>
             </TouchableOpacity>

@@ -6,7 +6,8 @@
     "production": {
       "android": {
         "buildType": "app-bundle"
-      }
+      },
+      "node": "20.19.4"
     }
   }
 }

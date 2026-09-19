@@ -49,34 +49,10 @@ export default function App() {
   async function loadChats() {
     try {
       const saved = await AsyncStorage.getItem(CHATS_KEY);
-      if (saved) setSavedChats(JSON.parse(saved));
-    } catch (e) {
-      console.log(e);
-    }
-  }
 
-  async function saveCurrentChat(chatMessages) {
-    try {
-      const useful = chatMessages.filter((m) => m.id !== "welcome");
-
-      if (!useful.length) return;
-
-      const firstUser = useful.find((m) => m.role === "user");
-      const title =
-        firstUser?.text?.slice(0, 35) ||
-        "Nový chat";
-
-      const newChat = {
-        id: Date.now().toString(),
-        title,
-        date: new Date().toISOString(),
-        messages: chatMessages,
-      };
-
-      const updated = [newChat, ...savedChats].slice(0, 30);
-
-      setSavedChats(updated);
-      await AsyncStorage.setItem(CHATS_KEY, JSON.stringify(updated));
+      if (saved) {
+        setSavedChats(JSON.parse(saved));
+      }
     } catch (e) {
       console.log(e);
     }
@@ -91,7 +67,10 @@ export default function App() {
           await ImagePicker.requestCameraPermissionsAsync();
 
         if (!permission.granted) {
-          Alert.alert("Rýp", "Potřebuju povolení ke kameře.");
+          Alert.alert(
+            "Rýp",
+            "Potřebuju povolení ke kameře."
+          );
           return;
         }
 
@@ -106,176 +85,129 @@ export default function App() {
           await ImagePicker.requestMediaLibraryPermissionsAsync();
 
         if (!permission.granted) {
-          Alert.alert("Rýp", "Potřebuju povolení ke galerii.");
+          Alert.alert(
+            "Rýp",
+            "Potřebuju povolení ke galerii."
+          );
           return;
         }
 
-        result = await ImagePicker.launchImageLibraryAsync({
-          mediaTypes: ["images"],
-          allowsEditing: true,
-          quality: 0.8,
-          base64: true,
-        });
+        result =
+          await ImagePicker.launchImageLibraryAsync({
+            mediaTypes: ["images"],
+            allowsEditing: true,
+            quality: 0.8,
+            base64: true,
+          });
       }
 
       if (result.canceled) return;
 
       const asset = result.assets[0];
 
-      const edited = await ImageManipulator.manipulateAsync(
-        asset.uri,
-        [],
-        {
-          compress: 0.8,
-          format: ImageManipulator.SaveFormat.JPEG,
-          base64: true,
-        }
-      );
+      const edited =
+        await ImageManipulator.manipulateAsync(
+          asset.uri,
+          [],
+          {
+            compress: 0.8,
+            format:
+              ImageManipulator.SaveFormat.JPEG,
+            base64: true,
+          }
+        );
 
       setSelectedImage({
         uri: edited.uri,
         base64: edited.base64,
       });
     } catch (e) {
-      Alert.alert("Rýp", "Fotku se nepodařilo načíst.");
+      console.log(e);
+
+      Alert.alert(
+        "Rýp",
+        "Fotku se nepodařilo načíst."
+      );
     }
   }
 
   async function rotateImage() {
     if (!selectedImage) return;
 
-    const result = await ImageManipulator.manipulateAsync(
-      selectedImage.uri,
-      [{ rotate: 90 }],
-      {
-        compress: 0.8,
-        format: ImageManipulator.SaveFormat.JPEG,
-        base64: true,
-      }
-    );
+    try {
+      const result =
+        await ImageManipulator.manipulateAsync(
+          selectedImage.uri,
+          [{ rotate: 90 }],
+          {
+            compress: 0.8,
+            format:
+              ImageManipulator.SaveFormat.JPEG,
+            base64: true,
+          }
+        );
 
-    setSelectedImage({
-      uri: result.uri,
-      base64: result.base64,
-    });
+      setSelectedImage({
+        uri: result.uri,
+        base64: result.base64,
+      });
+    } catch (e) {
+      console.log(e);
+    }
   }
 
   async function flipImage() {
     if (!selectedImage) return;
 
-    const result = await ImageManipulator.manipulateAsync(
-      selectedImage.uri,
-      [
-        {
-          flip: ImageManipulator.FlipType.Horizontal,
-        },
-      ],
-      {
-        compress: 0.8,
-        format: ImageManipulator.SaveFormat.JPEG,
-        base64: true,
-      }
-    );
-
-    setSelectedImage({
-      uri: result.uri,
-      base64: result.base64,
-    });
-  }
-
-  async function sendMessage() {
-    if ((!input.trim() && !selectedImage) || loading) return;
-
-    const userText = input.trim();
-
-    const userMessage = {
-      id: Date.now().toString(),
-      role: "user",
-      text: userText || "Podívej se na tuhle fotku.",
-      image: selectedImage?.uri || null,
-    };
-
-    const newMessages = [...messages, userMessage];
-
-    setMessages(newMessages);
-    setInput("");
-    setSelectedImage(null);
-    setLoading(true);
-
     try {
-      const history = newMessages.slice(-12).map((m) => ({
-        role: m.role,
-        content: m.text || "",
-      }));
+      const result =
+        await ImageManipulator.manipulateAsync(
+          selectedImage.uri,
+          [
+            {
+              flip:
+                ImageManipulator.FlipType.Horizontal,
+            },
+          ],
+          {
+            compress: 0.8,
+            format:
+              ImageManipulator.SaveFormat.JPEG,
+            base64: true,
+          }
+        );
 
-      const response = await fetch(SERVER_URL, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          message: userText || "Podívej se na obrázek.",
-          image: userMessage.image
-            ? `data:image/jpeg;base64,${await uriToBase64(userMessage.image)}`
-            : null,
-          history,
-        }),
+      setSelectedImage({
+        uri: result.uri,
+        base64: result.base64,
       });
-
-      const data = await response.json();
-
-      const answer =
-        data.reply ||
-        data.message ||
-        "Ty vole, nějak jsem se zasekl. 😅";
-
-      const assistantMessage = {
-        id: Date.now().toString() + "_bot",
-        role: "assistant",
-        text: cleanText(answer),
-      };
-
-      const finalMessages = [...newMessages, assistantMessage];
-
-      setMessages(finalMessages);
-
-      // Uloží pouze aktuální konverzaci jako jednu položku.
-      await updateSavedChat(finalMessages);
     } catch (e) {
       console.log(e);
-
-      setMessages((prev) => [
-        ...prev,
-        {
-          id: Date.now().toString(),
-          role: "assistant",
-          text: "Server zrovna chrápe. Zkus to za chvíli. 😂",
-        },
-      ]);
-    } finally {
-      setLoading(false);
     }
   }
 
   async function uriToBase64(uri) {
     try {
-      const result = await ImageManipulator.manipulateAsync(
-        uri,
-        [],
-        {
-          compress: 0.8,
-          format: ImageManipulator.SaveFormat.JPEG,
-          base64: true,
-        }
-      );
+      const result =
+        await ImageManipulator.manipulateAsync(
+          uri,
+          [],
+          {
+            compress: 0.8,
+            format:
+              ImageManipulator.SaveFormat.JPEG,
+            base64: true,
+          }
+        );
 
       return result.base64 || "";
-    } catch {
+    } catch (e) {
+      console.log(e);
       return "";
     }
   }
 
-  async function updateSavedChat(chatMessages) {
+  async function saveChat(chatMessages) {
     try {
       const firstUser = chatMessages.find(
         (m) => m.role === "user"
@@ -284,34 +216,36 @@ export default function App() {
       if (!firstUser) return;
 
       const title =
-        firstUser.text?.slice(0, 35) || "Nový chat";
+        firstUser.text?.slice(0, 35) ||
+        "Nový chat";
+
+      const chatId =
+        chatMessages._chatId ||
+        Date.now().toString();
+
+      const newChat = {
+        id: chatId,
+        title,
+        date: new Date().toISOString(),
+        messages: chatMessages,
+      };
 
       const existing = [...savedChats];
 
-      if (
-        existing.length > 0 &&
-        existing[0].messages?.some(
-          (m) => m.id === chatMessages[0].id
-        )
-      ) {
-        existing[0] = {
-          ...existing[0],
-          title,
-          messages: chatMessages,
-          date: new Date().toISOString(),
-        };
+      const index = existing.findIndex(
+        (chat) => chat.id === chatId
+      );
+
+      if (index >= 0) {
+        existing[index] = newChat;
       } else {
-        existing.unshift({
-          id: Date.now().toString(),
-          title,
-          messages: chatMessages,
-          date: new Date().toISOString(),
-        });
+        existing.unshift(newChat);
       }
 
       const limited = existing.slice(0, 30);
 
       setSavedChats(limited);
+
       await AsyncStorage.setItem(
         CHATS_KEY,
         JSON.stringify(limited)
@@ -321,18 +255,131 @@ export default function App() {
     }
   }
 
+  async function sendMessage() {
+    if (
+      (!input.trim() && !selectedImage) ||
+      loading
+    ) {
+      return;
+    }
+
+    const userText = input.trim();
+
+    const userMessage = {
+      id: Date.now().toString(),
+      role: "user",
+      text:
+        userText ||
+        "Podívej se na tuhle fotku.",
+      image: selectedImage?.uri || null,
+    };
+
+    const newMessages = [
+      ...messages,
+      userMessage,
+    ];
+
+    setMessages(newMessages);
+    setInput("");
+    setSelectedImage(null);
+    setLoading(true);
+
+    try {
+      const history = newMessages
+        .slice(-12)
+        .map((m) => ({
+          role: m.role,
+          content: m.text || "",
+        }));
+
+      let imageBase64 = null;
+
+      if (userMessage.image) {
+        imageBase64 = await uriToBase64(
+          userMessage.image
+        );
+      }
+
+      const response = await fetch(
+        SERVER_URL,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            message:
+              userText ||
+              "Podívej se na obrázek.",
+            image: imageBase64
+              ? `data:image/jpeg;base64,${imageBase64}`
+              : null,
+            history,
+          }),
+        }
+      );
+
+      const data = await response.json();
+
+      const answer =
+        data.reply ||
+        data.message ||
+        "Ty vole, nějak jsem se zasekl. 😅";
+
+      const assistantMessage = {
+        id:
+          Date.now().toString() +
+          "_bot",
+        role: "assistant",
+        text: cleanText(answer),
+      };
+
+      const finalMessages = [
+        ...newMessages,
+        assistantMessage,
+      ];
+
+      setMessages(finalMessages);
+
+      await saveChat(finalMessages);
+    } catch (e) {
+      console.log(e);
+
+      setMessages((prev) => [
+        ...prev,
+        {
+          id: Date.now().toString(),
+          role: "assistant",
+          text:
+            "Server zrovna chrápe. Zkus to za chvíli. 😂",
+        },
+      ]);
+    } finally {
+      setLoading(false);
+    }
+  }
+
   function openChat(chat) {
     setMessages(chat.messages);
     setShowChats(false);
   }
 
   async function deleteChat(id) {
-    const updated = savedChats.filter((chat) => chat.id !== id);
-    setSavedChats(updated);
-    await AsyncStorage.setItem(
-      CHATS_KEY,
-      JSON.stringify(updated)
-    );
+    try {
+      const updated =
+        savedChats.filter(
+          (chat) => chat.id !== id
+        );
+
+      setSavedChats(updated);
+
+      await AsyncStorage.setItem(
+        CHATS_KEY,
+        JSON.stringify(updated)
+      );
+    } catch (e) {
+      console.log(e);
+    }
   }
 
   function renderMessage({ item }) {
@@ -365,27 +412,54 @@ export default function App() {
   }
 
   function GameScreen() {
-    const [number, setNumber] = useState(
-      Math.floor(Math.random() * 20) + 1
-    );
-    const [guess, setGuess] = useState("");
-    const [result, setResult] = useState("");
+    const [number, setNumber] =
+      useState(
+        Math.floor(
+          Math.random() * 20
+        ) + 1
+      );
 
-    const [word, setWord] = useState("");
-    const [wordResult, setWordResult] = useState("");
+    const [guess, setGuess] =
+      useState("");
 
-    const [reaction, setReaction] = useState("Čekej...");
-    const reactionTimer = useRef(null);
+    const [result, setResult] =
+      useState("");
 
-    const [rpsResult, setRpsResult] = useState("");
-    const [target, setTarget] = useState(
-      Math.floor(Math.random() * 10) + 1
-    );
-    const [targetGuess, setTargetGuess] = useState("");
-    const [targetResult, setTargetResult] = useState("");
+    const [word, setWord] =
+      useState("");
+
+    const [wordResult, setWordResult] =
+      useState("");
+
+    const [reaction, setReaction] =
+      useState("ČEKEJ...");
+
+    const reactionTimer =
+      useRef(null);
+
+    const [rpsResult, setRpsResult] =
+      useState("");
+
+    const [target, setTarget] =
+      useState(
+        Math.floor(
+          Math.random() * 10
+        ) + 1
+      );
+
+    const [targetGuess, setTargetGuess] =
+      useState("");
+
+    const [targetResult, setTargetResult] =
+      useState("");
 
     function resetNumber() {
-      setNumber(Math.floor(Math.random() * 20) + 1);
+      setNumber(
+        Math.floor(
+          Math.random() * 20
+        ) + 1
+      );
+
       setGuess("");
       setResult("");
     }
@@ -393,55 +467,104 @@ export default function App() {
     function checkNumber() {
       const n = Number(guess);
 
-      if (!n || n < 1 || n > 20) {
-        setResult("Napiš číslo 1–20.");
+      if (
+        !n ||
+        n < 1 ||
+        n > 20
+      ) {
+        setResult(
+          "Napiš číslo 1–20."
+        );
         return;
       }
 
       if (n === number) {
-        setResult("🎉 Trefa! Jsi dobrej.");
+        setResult(
+          "🎉 Trefa! Jsi dobrej."
+        );
       } else if (n < number) {
-        setResult("⬆️ Moc málo.");
+        setResult(
+          "⬆️ Moc málo."
+        );
       } else {
-        setResult("⬇️ Moc hodně.");
+        setResult(
+          "⬇️ Moc hodně."
+        );
       }
     }
 
     function startReaction() {
-      setReaction("ČEKEJ...");
-      const delay = 1500 + Math.random() * 3000;
+      if (reactionTimer.current) {
+        clearTimeout(
+          reactionTimer.current
+        );
+      }
 
-      reactionTimer.current = setTimeout(() => {
-        setReaction("TEĎ!");
-      }, delay);
+      setReaction("ČEKEJ...");
+
+      const delay =
+        1500 +
+        Math.random() * 3000;
+
+      reactionTimer.current =
+        setTimeout(() => {
+          setReaction("TEĎ!");
+        }, delay);
     }
 
     function rps(choice) {
-      const choices = ["kámen", "nůžky", "papír"];
+      const choices = [
+        "kámen",
+        "nůžky",
+        "papír",
+      ];
+
       const bot =
-        choices[Math.floor(Math.random() * choices.length)];
+        choices[
+          Math.floor(
+            Math.random() *
+              choices.length
+          )
+        ];
 
       if (choice === bot) {
-        setRpsResult(`Já: ${bot}. Remíza 😁`);
+        setRpsResult(
+          `Já: ${bot}. Remíza 😁`
+        );
       } else if (
-        (choice === "kámen" && bot === "nůžky") ||
-        (choice === "nůžky" && bot === "papír") ||
-        (choice === "papír" && bot === "kámen")
+        (choice === "kámen" &&
+          bot === "nůžky") ||
+        (choice === "nůžky" &&
+          bot === "papír") ||
+        (choice === "papír" &&
+          bot === "kámen")
       ) {
-        setRpsResult(`Já: ${bot}. Vyhrál jsi! 😎`);
+        setRpsResult(
+          `Já: ${bot}. Vyhrál jsi! 😎`
+        );
       } else {
-        setRpsResult(`Já: ${bot}. Dostal jsi na prdel. 😂`);
+        setRpsResult(
+          `Já: ${bot}. Dostal jsi na prdel. 😂`
+        );
       }
     }
 
     function checkTarget() {
-      const n = Number(targetGuess);
+      const n = Number(
+        targetGuess
+      );
 
       if (n === target) {
-        setTargetResult("🎯 Zásah!");
+        setTargetResult(
+          "🎯 Zásah!"
+        );
+      } else if (n < target) {
+        setTargetResult(
+          "⬆️ Zkus vyšší."
+        );
       } else {
         setTargetResult(
-          n < target ? "⬆️ Zkus vyšší." : "⬇️ Zkus nižší."
+          "⬇️ Zkus nižší."
         );
       }
     }
@@ -450,8 +573,15 @@ export default function App() {
       <View style={styles.gameBox}>
         {game === "number" && (
           <>
-            <Text style={styles.gameTitle}>🔢 Hádej číslo</Text>
-            <Text style={styles.gameText}>
+            <Text
+              style={styles.gameTitle}
+            >
+              🔢 Hádej číslo
+            </Text>
+
+            <Text
+              style={styles.gameText}
+            >
               Myslím si číslo od 1 do 20.
             </Text>
 
@@ -468,23 +598,42 @@ export default function App() {
               style={styles.gameButton}
               onPress={checkNumber}
             >
-              <Text style={styles.gameButtonText}>
+              <Text
+                style={
+                  styles.gameButtonText
+                }
+              >
                 Hádat
               </Text>
             </TouchableOpacity>
 
-            <Text style={styles.result}>{result}</Text>
+            <Text
+              style={styles.result}
+            >
+              {result}
+            </Text>
 
-            <TouchableOpacity onPress={resetNumber}>
-              <Text style={styles.link}>Nová hra</Text>
+            <TouchableOpacity
+              onPress={resetNumber}
+            >
+              <Text style={styles.link}>
+                Nová hra
+              </Text>
             </TouchableOpacity>
           </>
         )}
 
         {game === "word" && (
           <>
-            <Text style={styles.gameTitle}>🔤 Slovo</Text>
-            <Text style={styles.gameText}>
+            <Text
+              style={styles.gameTitle}
+            >
+              🔤 Slovo
+            </Text>
+
+            <Text
+              style={styles.gameText}
+            >
               Napiš slovo začínající na písmeno R.
             </Text>
 
@@ -500,37 +649,57 @@ export default function App() {
               style={styles.gameButton}
               onPress={() =>
                 setWordResult(
-                  word.toLowerCase().startsWith("r")
+                  word
+                    .toLowerCase()
+                    .startsWith("r")
                     ? "✅ Dobře!"
                     : "❌ To nezačíná na R."
                 )
               }
             >
-              <Text style={styles.gameButtonText}>
+              <Text
+                style={
+                  styles.gameButtonText
+                }
+              >
                 Zkontrolovat
               </Text>
             </TouchableOpacity>
 
-            <Text style={styles.result}>{wordResult}</Text>
+            <Text
+              style={styles.result}
+            >
+              {wordResult}
+            </Text>
           </>
         )}
 
         {game === "reaction" && (
           <>
-            <Text style={styles.gameTitle}>
+            <Text
+              style={styles.gameTitle}
+            >
               ⚡ Reakce
             </Text>
 
             <TouchableOpacity
-              style={styles.reactionButton}
+              style={
+                styles.reactionButton
+              }
               onPress={startReaction}
             >
-              <Text style={styles.reactionText}>
+              <Text
+                style={
+                  styles.reactionText
+                }
+              >
                 {reaction}
               </Text>
             </TouchableOpacity>
 
-            <Text style={styles.gameText}>
+            <Text
+              style={styles.gameText}
+            >
               Klikni až když se objeví TEĎ!
             </Text>
           </>
@@ -538,25 +707,41 @@ export default function App() {
 
         {game === "rps" && (
           <>
-            <Text style={styles.gameTitle}>
+            <Text
+              style={styles.gameTitle}
+            >
               ✊ Kámen nůžky papír
             </Text>
 
             <View style={styles.row}>
-              {["kámen", "nůžky", "papír"].map((x) => (
+              {[
+                "kámen",
+                "nůžky",
+                "papír",
+              ].map((x) => (
                 <TouchableOpacity
                   key={x}
-                  style={styles.smallButton}
-                  onPress={() => rps(x)}
+                  style={
+                    styles.smallButton
+                  }
+                  onPress={() =>
+                    rps(x)
+                  }
                 >
-                  <Text style={styles.smallButtonText}>
+                  <Text
+                    style={
+                      styles.smallButtonText
+                    }
+                  >
                     {x}
                   </Text>
                 </TouchableOpacity>
               ))}
             </View>
 
-            <Text style={styles.result}>
+            <Text
+              style={styles.result}
+            >
               {rpsResult}
             </Text>
           </>
@@ -564,16 +749,22 @@ export default function App() {
 
         {game === "memory" && (
           <>
-            <Text style={styles.gameTitle}>
+            <Text
+              style={styles.gameTitle}
+            >
               🧠 Paměť
             </Text>
 
-            <Text style={styles.bigEmoji}>
+            <Text
+              style={styles.bigEmoji}
+            >
               🐱 🐶 🦊 🐸 🐵
             </Text>
 
-            <Text style={styles.gameText}>
-              Zapamatuj si pořadí. Za chvíli ho zkus napsat.
+            <Text
+              style={styles.gameText}
+            >
+              Zapamatuj si pořadí.
             </Text>
 
             <TouchableOpacity
@@ -585,7 +776,11 @@ export default function App() {
                 )
               }
             >
-              <Text style={styles.gameButtonText}>
+              <Text
+                style={
+                  styles.gameButtonText
+                }
+              >
                 Zobrazit výsledek
               </Text>
             </TouchableOpacity>
@@ -594,17 +789,23 @@ export default function App() {
 
         {game === "target" && (
           <>
-            <Text style={styles.gameTitle}>
+            <Text
+              style={styles.gameTitle}
+            >
               🎯 Terč
             </Text>
 
-            <Text style={styles.gameText}>
+            <Text
+              style={styles.gameText}
+            >
               Hádej číslo 1–10.
             </Text>
 
             <TextInput
               value={targetGuess}
-              onChangeText={setTargetGuess}
+              onChangeText={
+                setTargetGuess
+              }
               keyboardType="numeric"
               placeholder="Tip"
               placeholderTextColor="#777"
@@ -615,12 +816,18 @@ export default function App() {
               style={styles.gameButton}
               onPress={checkTarget}
             >
-              <Text style={styles.gameButtonText}>
+              <Text
+                style={
+                  styles.gameButtonText
+                }
+              >
                 Střílet
               </Text>
             </TouchableOpacity>
 
-            <Text style={styles.result}>
+            <Text
+              style={styles.result}
+            >
               {targetResult}
             </Text>
           </>
@@ -628,15 +835,21 @@ export default function App() {
 
         {game === "snake" && (
           <>
-            <Text style={styles.gameTitle}>
+            <Text
+              style={styles.gameTitle}
+            >
               🐍 Had
             </Text>
 
-            <Text style={styles.gameText}>
+            <Text
+              style={styles.gameText}
+            >
               Minihra s hadem bude dál rozšiřovaná.
             </Text>
 
-            <Text style={styles.bigEmoji}>
+            <Text
+              style={styles.bigEmoji}
+            >
               🐍🍎
             </Text>
           </>
@@ -646,7 +859,9 @@ export default function App() {
           style={styles.closeButton}
           onPress={() => setGame(null)}
         >
-          <Text style={styles.closeText}>
+          <Text
+            style={styles.closeText}
+          >
             Zavřít hru
           </Text>
         </TouchableOpacity>
@@ -659,26 +874,44 @@ export default function App() {
       <View style={styles.header}>
         <View style={styles.headerLeft}>
           <Image
-            source={require("./file_00000000e44c81f4b86b60e21106fc88.png")}
+            source={require(
+              "./file_00000000e44c81f4b86b60e21106fc88.png"
+            )}
             style={styles.avatar}
           />
 
-          <Text style={styles.title}>Rýp</Text>
+          <Text style={styles.title}>
+            Rýp
+          </Text>
         </View>
 
-        <View style={styles.headerButtons}>
+        <View
+          style={styles.headerButtons}
+        >
           <TouchableOpacity
-            onPress={() => setShowChats(true)}
+            onPress={() =>
+              setShowChats(true)
+            }
             style={styles.iconButton}
           >
-            <Text style={styles.iconText}>💬</Text>
+            <Text
+              style={styles.iconText}
+            >
+              💬
+            </Text>
           </TouchableOpacity>
 
           <TouchableOpacity
-            onPress={() => setShowGames(true)}
+            onPress={() =>
+              setShowGames(true)
+            }
             style={styles.iconButton}
           >
-            <Text style={styles.iconText}>🎮</Text>
+            <Text
+              style={styles.iconText}
+            >
+              🎮
+            </Text>
           </TouchableOpacity>
         </View>
       </View>
@@ -686,119 +919,35 @@ export default function App() {
       <FlatList
         ref={scrollRef}
         data={messages}
-        keyExtractor={(item) => item.id}
+        keyExtractor={(item) =>
+          item.id
+        }
         renderItem={renderMessage}
-        contentContainerStyle={styles.messages}
+        contentContainerStyle={
+          styles.messages
+        }
         onContentSizeChange={() =>
-          scrollRef.current?.scrollToEnd({
-            animated: true,
-          })
+          scrollRef.current?.scrollToEnd(
+            {
+              animated: true,
+            }
+          )
         }
       />
 
       {selectedImage && (
         <View style={styles.previewBox}>
           <Image
-            source={{ uri: selectedImage.uri }}
+            source={{
+              uri: selectedImage.uri,
+            }}
             style={styles.preview}
           />
 
           <View style={styles.editRow}>
             <TouchableOpacity
-              style={styles.editButton}
+              style={
+                styles.editButton
+              }
               onPress={rotateImage}
-            >
-              <Text style={styles.editText}>↻</Text>
-            </TouchableOpacity>
-
-            <TouchableOpacity
-              style={styles.editButton}
-              onPress={flipImage}
-            >
-              <Text style={styles.editText}>↔</Text>
-            </TouchableOpacity>
-
-            <TouchableOpacity
-              style={styles.editButton}
-              onPress={() => setSelectedImage(null)}
-            >
-              <Text style={styles.editText}>✕</Text>
-            </TouchableOpacity>
-          </View>
-        </View>
-      )}
-
-      <View style={styles.inputRow}>
-        <TouchableOpacity
-          style={styles.photoButton}
-          onPress={() =>
-            Alert.alert(
-              "Fotka",
-              "Vyber zdroj",
-              [
-                {
-                  text: "Galerie",
-                  onPress: () => pickImage(false),
-                },
-                {
-                  text: "Fotoaparát",
-                  onPress: () => pickImage(true),
-                },
-                {
-                  text: "Zrušit",
-                  style: "cancel",
-                },
-              ]
-            )
-          }
-        >
-          <Text style={styles.photoText}>📷</Text>
-        </TouchableOpacity>
-
-        <TextInput
-          value={input}
-          onChangeText={setInput}
-          placeholder="Napiš Rýpovi..."
-          placeholderTextColor="#777"
-          multiline
-          style={styles.input}
-        />
-
-        <TouchableOpacity
-          style={styles.sendButton}
-          onPress={sendMessage}
-          disabled={loading}
-        >
-          <Text style={styles.sendText}>
-            {loading ? "…" : "➤"}
-          </Text>
-        </TouchableOpacity>
-      </View>
-
-      <Modal
-        visible={showGames}
-        transparent
-        animationType="slide"
-        onRequestClose={() => setShowGames(false)}
-      >
-        <View style={styles.modal}>
-          <View style={styles.modalBox}>
-            <Text style={styles.modalTitle}>
-              🎮 Rýpovy hry
-            </Text>
-
-            {[
-              ["number", "🔢 Hádej číslo"],
-              ["word", "🔤 Slovo"],
-              ["reaction", "⚡ Reakce"],
-              ["rps", "✊ Kámen nůžky papír"],
-              ["memory", "🧠 Paměť"],
-              ["target", "🎯 Terč"],
-              ["snake", "🐍 Had"],
-            ].map(([id, title]) => (
-              <TouchableOpacity
-                key={id}
-                style={styles.menuButton}
-                onPress={() => playGame(id)}
-              >
    

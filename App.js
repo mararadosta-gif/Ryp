@@ -318,7 +318,7 @@ export default function App() {
         <View style={styles.header}>
           <Image
             source={require(
-              "./file_00000000bf8881f4bf38d7b531a7d6eb.png"
+              "./file_00000000e44c81f4b86b60e21106fc88.png"
             )}
             style={styles.avatar}
           />

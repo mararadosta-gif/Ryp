@@ -1685,8 +1685,8 @@ export default function App() {
             <Text style={styles.closeButtonText}>Zavřít</Text>
           </TouchableOpacity>
         </View>
-      </View>
-    </Modal>
+      </View>    </Modal>
+      </KeyboardAvoidingView>
   </View>
 );
 }

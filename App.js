@@ -1,5 +1,4 @@
 import React, { useEffect, useState } from "react";
-
 import {
   SafeAreaView,
   View,
@@ -8,17 +7,16 @@ import {
   TextInput,
   TouchableOpacity,
   StyleSheet,
-  Linking,
   KeyboardAvoidingView,
   Platform,
+  StatusBar,
   Alert,
   Modal,
   FlatList,
-  ScrollView,
+  Dimensions,
 } from "react-native";
-
+import { Ionicons } from "@expo/vector-icons";
 import * as ImagePicker from "expo-image-picker";
-import * as ImageManipulator from "expo-image-manipulator";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 
 const API_URL = "https://ryp-hpvu.onrender.com/chat";
@@ -28,6 +26,15 @@ const RYP_IMAGE = require(
   "./file_00000000e44c81f4b86b60e21106fc88.png"
 );
 
+const { width } = Dimensions.get("window");
+
+const WELCOME = {
+  id: "welcome",
+  role: "assistant",
+  content:
+    "Čau. Já jsem Rýp. Tak povídej, co zase potřebuješ. 😉",
+};
+
 function makeId() {
   return (
     Date.now().toString() +
@@ -35,199 +42,143 @@ function makeId() {
   );
 }
 
-/* =========================
-   ODKAZY
-========================= */
-
-function LinkText({ text }) {
-  if (!text) {
-    return null;
-  }
-
-  const parts = text.split(
-    /(https?:\/\/[^\s]+)/g
-  );
+function Message({ item }) {
+  const mine = item.role === "user";
 
   return (
-    <Text style={styles.messageText}>
-      {parts.map((part, index) => {
-        if (/^https?:\/\//.test(part)) {
-          return (
-            <Text
-              key={index}
-              style={styles.linkText}
-              onPress={() =>
-                Linking.openURL(
-                  part.replace(/[.,!?)]$/, "")
-                )
-              }
-            >
-              {part}
-            </Text>
-          );
-        }
+    <View
+      style={[
+        styles.messageRow,
+        mine && styles.messageRowMine,
+      ]}
+    >
+      {!mine && (
+        <Image
+          source={RYP_IMAGE}
+          style={styles.messageAvatar}
+        />
+      )}
 
-        return part;
-      })}
-    </Text>
+      <View
+        style={[
+          styles.messageBubble,
+          mine
+            ? styles.userBubble
+            : styles.aiBubble,
+        ]}
+      >
+        <Text style={styles.messageText}>
+          {item.content}
+        </Text>
+      </View>
+    </View>
   );
 }
 
-/* =========================
-   HLAVNÍ APLIKACE
-========================= */
-
 export default function App() {
-  const [messages, setMessages] = useState([
-    {
-      id: makeId(),
-      role: "assistant",
-      content:
-        "Čau 😈 Já jsem Rýp. Tak co dneska vyřešíme?",
-    },
-  ]);
-
+  const [messages, setMessages] = useState([WELCOME]);
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
 
   const [savedChats, setSavedChats] = useState([]);
-  const [savedVisible, setSavedVisible] =
-    useState(false);
 
-  const [photoUri, setPhotoUri] = useState(null);
-  const [photoVisible, setPhotoVisible] =
-    useState(false);
+  const [activeTab, setActiveTab] =
+    useState("chat");
 
-  const [moreVisible, setMoreVisible] =
-    useState(false);
+  const [modal, setModal] = useState(null);
 
-  const [settingsVisible, setSettingsVisible] =
-    useState(false);
-
-  const [aboutVisible, setAboutVisible] =
-    useState(false);
-
-  /* =========================
-     ULOŽENÉ CHATY
-  ========================= */
+  const [photo, setPhoto] = useState(null);
 
   useEffect(() => {
-    loadSavedChats();
+    loadChats();
   }, []);
 
-  const loadSavedChats = async () => {
+  async function loadChats() {
     try {
-      const saved =
+      const raw =
         await AsyncStorage.getItem(CHAT_KEY);
 
-      if (saved) {
-        setSavedChats(JSON.parse(saved));
+      if (raw) {
+        setSavedChats(JSON.parse(raw));
       }
-    } catch (error) {
-      console.log(
-        "Chyba při načítání chatů:",
-        error
-      );
-    }
-  };
+    } catch (e) {}
+  }
 
-  const persistChats = async (chats) => {
-    try {
-      await AsyncStorage.setItem(
-        CHAT_KEY,
-        JSON.stringify(chats)
-      );
-    } catch (error) {
-      console.log(
-        "Chyba při ukládání chatů:",
-        error
-      );
-    }
-  };
+  async function persistChats(chats) {
+    setSavedChats(chats);
 
-  const saveCurrentChat = async () => {
-    if (!messages.length) {
+    await AsyncStorage.setItem(
+      CHAT_KEY,
+      JSON.stringify(chats)
+    );
+  }
+
+  function newChat() {
+    setMessages([WELCOME]);
+    setInput("");
+    setPhoto(null);
+    setActiveTab("chat");
+    setModal(null);
+  }
+
+  async function saveChat() {
+    if (messages.length <= 1) {
+      Alert.alert(
+        "Rýp",
+        "Nejdřív si s Rýpem něco napiš 😈"
+      );
       return;
     }
 
-    const firstUserMessage =
-      messages.find(
-        (message) =>
-          message.role === "user"
-      );
+    const firstUser = messages.find(
+      (m) => m.role === "user"
+    );
 
     const title =
-      firstUserMessage?.content?.slice(
-        0,
-        40
-      ) || "Nový chat";
+      firstUser?.content?.slice(0, 35) ||
+      "Nový chat";
 
     const chat = {
       id: makeId(),
       title,
+      date: new Date().toLocaleString("cs-CZ"),
       messages,
-      createdAt:
-        new Date().toISOString(),
     };
 
-    const updated = [
+    await persistChats([
       chat,
       ...savedChats,
-    ].slice(0, 30);
-
-    setSavedChats(updated);
-
-    await persistChats(updated);
+    ]);
 
     Alert.alert(
       "Hotovo",
-      "Chat byl uložen 😈"
+      "Chat je uložený."
     );
-  };
+  }
 
-  const deleteChat = async (id) => {
-    const updated =
-      savedChats.filter(
-        (chat) => chat.id !== id
-      );
+  async function deleteChat(id) {
+    const next = savedChats.filter(
+      (c) => c.id !== id
+    );
 
-    setSavedChats(updated);
+    await persistChats(next);
+  }
 
-    await persistChats(updated);
-  };
+  function openChat(chat) {
+    setMessages(
+      chat.messages?.length
+        ? chat.messages
+        : [WELCOME]
+    );
 
-  const openSavedChat = (chat) => {
-    setMessages(chat.messages);
-    setSavedVisible(false);
-  };
+    setModal(null);
+    setActiveTab("chat");
+  }
 
-  /* =========================
-     NOVÝ CHAT
-  ========================= */
-
-  const newChat = () => {
-    setMessages([
-      {
-        id: makeId(),
-        role: "assistant",
-        content:
-          "Čau 😈 Já jsem Rýp. Tak co dneska vyřešíme?",
-      },
-    ]);
-
-    setInput("");
-  };
-
-  /* =========================
-     POSLÁNÍ ZPRÁVY
-  ========================= */
-
-  const sendMessage = async () => {
+  async function sendMessage() {
     const text = input.trim();
 
-    if (!text || loading) {
-      return;
-    }
+    if (!text || loading) return;
 
     const userMessage = {
       id: makeId(),
@@ -245,6 +196,14 @@ export default function App() {
     setLoading(true);
 
     try {
+      const history =
+        nextMessages
+          .slice(-12)
+          .map((m) => ({
+            role: m.role,
+            content: m.content,
+          }));
+
       const response = await fetch(
         API_URL,
         {
@@ -254,23 +213,19 @@ export default function App() {
               "application/json",
           },
           body: JSON.stringify({
-            messages: nextMessages
-              .slice(-12)
-              .map((message) => ({
-                role: message.role,
-                content: message.content,
-              })),
+            message: text,
+            history,
           }),
         }
       );
 
-      const data =
-        await response.json();
+      const data = await response.json();
 
       const answer =
         data?.reply ||
         data?.message ||
-        "Rýp momentálně mlčí. 🤨";
+        data?.response ||
+        "Rýp se zasekl. Zkus to ještě jednou 😈";
 
       setMessages((current) => [
         ...current,
@@ -280,184 +235,101 @@ export default function App() {
           content: answer,
         },
       ]);
-    } catch (error) {
-      console.log(
-        "Chyba API:",
-        error
-      );
-
+    } catch (e) {
       setMessages((current) => [
         ...current,
         {
           id: makeId(),
           role: "assistant",
           content:
-            "Kurva, spojení se mnou nějak chcíplo. Zkus to znovu 😅",
+            "Teď mi to nějak nejede. Zkus to za chvíli znovu 😈",
         },
       ]);
     } finally {
       setLoading(false);
     }
-  };
+  }
 
-  /* =========================
-     KAMERA
-  ========================= */
-
-  const openCamera = async () => {
+  async function pickPhoto(camera = false) {
     try {
-      const permission =
-        await ImagePicker.requestCameraPermissionsAsync();
+      let result;
 
-      if (!permission.granted) {
-        Alert.alert(
-          "Kamera",
-          "Rýp potřebuje povolení ke kameře."
-        );
-        return;
-      }
+      if (camera) {
+        const permission =
+          await ImagePicker.requestCameraPermissionsAsync();
 
-      const result =
-        await ImagePicker.launchCameraAsync({
-          mediaTypes:
-            ImagePicker.MediaTypeOptions.Images,
-          quality: 0.8,
-        });
-
-      if (!result.canceled) {
-        const uri =
-          result.assets?.[0]?.uri;
-
-        if (uri) {
-          setPhotoUri(uri);
-          setPhotoVisible(true);
+        if (!permission.granted) {
+          Alert.alert(
+            "Foto",
+            "Rýp potřebuje povolení ke kameře."
+          );
+          return;
         }
-      }
-    } catch (error) {
-      console.log(
-        "Kamera chyba:",
-        error
-      );
-    }
-  };
 
-  /* =========================
-     GALERIE
-  ========================= */
+        result =
+          await ImagePicker.launchCameraAsync({
+            mediaTypes: ["images"],
+            quality: 0.8,
+          });
+      } else {
+        const permission =
+          await ImagePicker.requestMediaLibraryPermissionsAsync();
 
-  const openGallery = async () => {
-    try {
-      const permission =
-        await ImagePicker.requestMediaLibraryPermissionsAsync();
-
-      if (!permission.granted) {
-        Alert.alert(
-          "Galerie",
-          "Rýp potřebuje povolení k fotkám."
-        );
-        return;
-      }
-
-      const result =
-        await ImagePicker.launchImageLibraryAsync({
-          mediaTypes:
-            ImagePicker.MediaTypeOptions.Images,
-          quality: 0.8,
-        });
-
-      if (!result.canceled) {
-        const uri =
-          result.assets?.[0]?.uri;
-
-        if (uri) {
-          setPhotoUri(uri);
-          setPhotoVisible(true);
+        if (!permission.granted) {
+          Alert.alert(
+            "Foto",
+            "Rýp potřebuje přístup k fotkám."
+          );
+          return;
         }
+
+        result =
+          await ImagePicker.launchImageLibraryAsync({
+            mediaTypes: ["images"],
+            quality: 0.8,
+          });
       }
-    } catch (error) {
-      console.log(
-        "Galerie chyba:",
-        error
+
+      if (
+        !result.canceled &&
+        result.assets?.[0]?.uri
+      ) {
+        setPhoto(result.assets[0].uri);
+        setModal("photo");
+      }
+    } catch (e) {
+      Alert.alert(
+        "Foto",
+        "Fotku se nepodařilo otevřít."
       );
     }
-  };
+  }
 
-  /* =========================
-     OTOČENÍ FOTKY
-  ========================= */
+  function selectTab(tab) {
+    setActiveTab(tab);
 
-  const rotatePhoto = async () => {
-    if (!photoUri) {
-      return;
+    if (tab === "chat") return;
+
+    if (tab === "photo") {
+      setModal("photoMenu");
     }
 
-    try {
-      const result =
-        await ImageManipulator.manipulateAsync(
-          photoUri,
-          [
-            {
-              rotate: 90,
-            },
-          ],
-          {
-            compress: 0.9,
-            format:
-              ImageManipulator.SaveFormat.JPEG,
-          }
-        );
-
-      setPhotoUri(result.uri);
-    } catch (error) {
-      console.log(
-        "Rotace chyba:",
-        error
-      );
-    }
-  };
-
-  /* =========================
-     PŘEVRÁCENÍ FOTKY
-  ========================= */
-
-  const flipPhoto = async () => {
-    if (!photoUri) {
-      return;
+    if (tab === "games") {
+      setModal("games");
     }
 
-    try {
-      const result =
-        await ImageManipulator.manipulateAsync(
-          photoUri,
-          [
-            {
-              flip:
-                ImageManipulator.FlipType
-                  .Horizontal,
-            },
-          ],
-          {
-            compress: 0.9,
-            format:
-              ImageManipulator.SaveFormat.JPEG,
-          }
-        );
-
-      setPhotoUri(result.uri);
-    } catch (error) {
-      console.log(
-        "Převrácení chyba:",
-        error
-      );
+    if (tab === "more") {
+      setModal("more");
     }
-  };
-
-  /* =========================
-     RENDER
-  ========================= */
+  }
 
   return (
-    <SafeAreaView style={styles.safeArea}>
+    <SafeAreaView style={styles.safe}>
+      <StatusBar
+        barStyle="light-content"
+        backgroundColor="#02070D"
+      />
+
       <KeyboardAvoidingView
         style={styles.container}
         behavior={
@@ -466,1253 +338,987 @@ export default function App() {
             : undefined
         }
       >
-
-        {/* HLAVIČKA */}
-
-        <View style={styles.header}>
-          <View style={styles.headerLeft}>
-            <Image
-              source={RYP_IMAGE}
-              style={styles.headerAvatar}
-              resizeMode="cover"
-            />
-
-            <View>
-              <Text style={styles.logoText}>
-                RýpAI
-              </Text>
-
-              <Text
-                style={styles.subtitleText}
-              >
-                AI kámoš, co se s tebou nemaže 😈
-              </Text>
-            </View>
-          </View>
-
-          <TouchableOpacity
-            style={styles.headerButton}
-            onPress={newChat}
-          >
-            <Text
-              style={styles.headerButtonText}
-            >
-              ＋
-            </Text>
-          </TouchableOpacity>
-        </View>
-
-        {/* CHAT */}
+        <View style={styles.backgroundGlow} />
 
         <FlatList
           data={messages}
-          keyExtractor={(item) =>
-            item.id
-          }
-          style={styles.chatList}
+          keyExtractor={(item) => item.id}
+          renderItem={({ item }) => (
+            <Message item={item} />
+          )}
+          showsVerticalScrollIndicator={false}
           contentContainerStyle={
             styles.chatContent
           }
-          showsVerticalScrollIndicator={
-            false
-          }
-          renderItem={({ item }) => (
-            <View
-              style={[
-                styles.messageRow,
-                item.role === "user"
-                  ? styles.userRow
-                  : styles.assistantRow,
-              ]}
-            >
-              {item.role ===
-                "assistant" && (
+          ListHeaderComponent={
+            <View style={styles.hero}>
+              <View style={styles.heroArtwork}>
+                <View style={styles.blueRing} />
+
                 <Image
                   source={RYP_IMAGE}
-                  style={
-                    styles.messageAvatar
-                  }
-                />
-              )}
-
-              <View
-                style={[
-                  styles.messageBubble,
-                  item.role === "user"
-                    ? styles.userBubble
-                    : styles.assistantBubble,
-                ]}
-              >
-                <LinkText
-                  text={item.content}
+                  style={styles.heroImage}
                 />
               </View>
+
+              <Text style={styles.logoText}>
+                Rýp
+              </Text>
+
+              <View style={styles.logoStroke} />
+
+              <Text style={styles.slogan}>
+                AI, která se s tebou nemaže.
+                <Text style={styles.crown}>
+                  {" "}♕
+                </Text>
+              </Text>
             </View>
-          )}
+          }
         />
 
-        {/* LOADING */}
-
         {loading && (
-          <View
-            style={styles.loadingRow}
-          >
+          <View style={styles.loadingRow}>
             <Image
               source={RYP_IMAGE}
               style={styles.loadingAvatar}
             />
 
-            <View
-              style={styles.loadingBubble}
-            >
-              <Text
-                style={styles.loadingText}
-              >
-                Rýp přemýšlí... 😈
-              </Text>
-            </View>
+            <Text style={styles.loadingText}>
+              Rýp přemýšlí… 😈
+            </Text>
           </View>
         )}
 
-        {/* INPUT */}
-
-        <View style={styles.inputArea}>
+        <View style={styles.composerRow}>
           <TouchableOpacity
             style={styles.cameraButton}
-            onPress={openCamera}
+            onPress={() => pickPhoto(true)}
+            activeOpacity={0.8}
           >
-            <Text
-              style={styles.cameraIcon}
-            >
-              📷
-            </Text>
+            <Ionicons
+              name="camera"
+              size={42}
+              color="#EAF4FF"
+            />
           </TouchableOpacity>
 
           <TextInput
-            style={styles.textInput}
             value={input}
             onChangeText={setInput}
+            onSubmitEditing={sendMessage}
             placeholder="Napiš Rýpovi..."
-            placeholderTextColor="#68778B"
+            placeholderTextColor="#8EA8D1"
+            style={styles.input}
             multiline
-            maxLength={4000}
+            maxLength={2000}
           />
 
           <TouchableOpacity
-            style={[
-              styles.sendButton,
-              (!input.trim() ||
-                loading) &&
-                styles.sendButtonDisabled,
-            ]}
+            style={styles.sendButton}
             onPress={sendMessage}
-            disabled={
-              !input.trim() || loading
-            }
+            activeOpacity={0.75}
           >
-            <Text
-              style={styles.sendIcon}
-            >
-              ➤
-            </Text>
+            <Ionicons
+              name="send"
+              size={42}
+              color="#071000"
+            />
           </TouchableOpacity>
         </View>
 
-        {/* SPODNÍ NAVIGACE */}
-
-        <View style={styles.bottomNav}>
-
-          <TouchableOpacity
-            style={styles.navItem}
-            onPress={newChat}
-          >
-            <Text
-              style={[
-                styles.navIcon,
-                styles.navIconActive,
-              ]}
-            >
-              💬
-            </Text>
-
-            <Text
-              style={[
-                styles.navText,
-                styles.navActiveText,
-              ]}
-            >
-              Chat
-            </Text>
-          </TouchableOpacity>
-
-          <TouchableOpacity
-            style={styles.navItem}
+        <View style={styles.bottomBar}>
+          <BottomButton
+            active={activeTab === "chat"}
+            icon="chatbubble"
+            label="Chat"
             onPress={() =>
-              setPhotoVisible(true)
+              selectTab("chat")
             }
-          >
-            <Text
-              style={styles.navIcon}
-            >
-              📷
-            </Text>
+          />
 
-            <Text
-              style={styles.navText}
-            >
+          <BottomButton
+            active={activeTab === "games"}
+            icon="game-controller"
+            label="Hry"
+            onPress={() =>
+              selectTab("games")
+            }
+          />
+
+          <BottomButton
+            active={activeTab === "photo"}
+            icon="camera"
+            label="Foto"
+            onPress={() =>
+              selectTab("photo")
+            }
+          />
+
+          <BottomButton
+            active={activeTab === "more"}
+            icon="menu"
+            label="Další"
+            onPress={() =>
+              selectTab("more")
+            }
+          />
+        </View>
+      </KeyboardAvoidingView>
+
+      {/* FOTO MENU */}
+      <Modal
+        visible={modal === "photoMenu"}
+        transparent
+        animationType="fade"
+      >
+        <View style={styles.modalBackdrop}>
+          <View style={styles.modalBox}>
+            <Text style={styles.modalTitle}>
               Foto
             </Text>
-          </TouchableOpacity>
 
-          <TouchableOpacity
-            style={styles.navItem}
-            onPress={() =>
-              setSavedVisible(true)
-            }
-          >
-            <Text
-              style={styles.navIcon}
+            <TouchableOpacity
+              style={styles.modalButton}
+              onPress={() =>
+                pickPhoto(true)
+              }
             >
-              💾
-            </Text>
-
-            <Text
-              style={styles.navText}
-            >
-              Chaty
-            </Text>
-          </TouchableOpacity>
-
-          <TouchableOpacity
-            style={styles.navItem}
-            onPress={() =>
-              setMoreVisible(true)
-            }
-          >
-            <Text
-              style={styles.navIcon}
-            >
-              ☰
-            </Text>
-
-            <Text
-              style={styles.navText}
-            >
-              Další
-            </Text>
-          </TouchableOpacity>
-
-        </View>
-
-        {/* FOTO */}
-
-        <Modal
-          visible={photoVisible}
-          transparent
-          animationType="slide"
-          onRequestClose={() =>
-            setPhotoVisible(false)
-          }
-        >
-          <View
-            style={styles.modalOverlay}
-          >
-            <View
-              style={styles.photoModal}
-            >
-
-              <View
-                style={styles.modalHeader}
-              >
-                <Text
-                  style={styles.modalTitle}
-                >
-                  📷 Foto
-                </Text>
-
-                <TouchableOpacity
-                  onPress={() =>
-                    setPhotoVisible(false)
-                  }
-                >
-                  <Text
-                    style={
-                      styles.closeText
-                    }
-                  >
-                    ✕
-                  </Text>
-                </TouchableOpacity>
-              </View>
-
-              {photoUri ? (
-                <Image
-                  source={{
-                    uri: photoUri,
-                  }}
-                  style={
-                    styles.photoPreview
-                  }
-                  resizeMode="contain"
-                />
-              ) : (
-                <View
-                  style={styles.noPhoto}
-                >
-                  <Text
-                    style={
-                      styles.noPhotoText
-                    }
-                  >
-                    Vyfoť nebo vyber fotku 😈
-                  </Text>
-                </View>
-              )}
-
-              <View
-                style={
-                  styles.photoButtons
-                }
-              >
-                <TouchableOpacity
-                  style={
-                    styles.photoButton
-                  }
-                  onPress={openCamera}
-                >
-                  <Text
-                    style={
-                      styles.photoButtonText
-                    }
-                  >
-                    📷 Kamera
-                  </Text>
-                </TouchableOpacity>
-
-                <TouchableOpacity
-                  style={
-                    styles.photoButton
-                  }
-                  onPress={openGallery}
-                >
-                  <Text
-                    style={
-                      styles.photoButtonText
-                    }
-                  >
-                    🖼 Galerie
-                  </Text>
-                </TouchableOpacity>
-              </View>
-
-              {photoUri && (
-                <View
-                  style={
-                    styles.photoButtons
-                  }
-                >
-                  <TouchableOpacity
-                    style={
-                      styles.photoButton
-                    }
-                    onPress={
-                      rotatePhoto
-                    }
-                  >
-                    <Text
-                      style={
-                        styles.photoButtonText
-                      }
-                    >
-                      🔄 Otočit
-                    </Text>
-                  </TouchableOpacity>
-
-                  <TouchableOpacity
-                    style={
-                      styles.photoButton
-                    }
-                    onPress={
-                      flipPhoto
-                    }
-                  >
-                    <Text
-                      style={
-                        styles.photoButtonText
-                      }
-                    >
-                      ↔ Převrátit
-                    </Text>
-                  </TouchableOpacity>
-                </View>
-              )}
-
-            </View>
-          </View>
-        </Modal>
-
-        {/* DALŠÍ */}
-
-        <Modal
-          visible={moreVisible}
-          transparent
-          animationType="slide"
-          onRequestClose={() =>
-            setMoreVisible(false)
-          }
-        >
-          <View
-            style={styles.modalOverlay}
-          >
-            <View
-              style={styles.moreModal}
-            >
-
-              <View
-                style={styles.modalHeader}
-              >
-                <Text
-                  style={styles.modalTitle}
-                >
-                  ☰ Další
-                </Text>
-
-                <TouchableOpacity
-                  onPress={() =>
-                    setMoreVisible(false)
-                  }
-                >
-                  <Text
-                    style={
-                      styles.closeText
-                    }
-                  >
-                    ✕
-                  </Text>
-                </TouchableOpacity>
-              </View>
-
-              <TouchableOpacity
-                style={styles.menuItem}
-                onPress={() => {
-                  setMoreVisible(false);
-                  setSavedVisible(true);
-                }}
-              >
-                <Text
-                  style={
-                    styles.menuIcon
-                  }
-                >
-                  💾
-                </Text>
-
-                <Text
-                  style={
-                    styles.menuText
-                  }
-                >
-                  Uložené chaty
-                </Text>
-              </TouchableOpacity>
-
-              <TouchableOpacity
-                style={styles.menuItem}
-                onPress={saveCurrentChat}
-              >
-                <Text
-                  style={
-                    styles.menuIcon
-                  }
-                >
-                  📌
-                </Text>
-
-                <Text
-                  style={
-                    styles.menuText
-                  }
-                >
-                  Uložit aktuální chat
-                </Text>
-              </TouchableOpacity>
-
-              <TouchableOpacity
-                style={styles.menuItem}
-                onPress={() => {
-                  setMoreVisible(false);
-                  setSettingsVisible(true);
-                }}
-              >
-                <Text
-                  style={
-                    styles.menuIcon
-                  }
-                >
-                  ⚙️
-                </Text>
-
-                <Text
-                  style={
-                    styles.menuText
-                  }
-                >
-                  Nastavení
-                </Text>
-              </TouchableOpacity>
-
-              <TouchableOpacity
-                style={styles.menuItem}
-                onPress={() => {
-                  setMoreVisible(false);
-                  setAboutVisible(true);
-                }}
-              >
-                <Text
-                  style={
-                    styles.menuIcon
-                  }
-                >
-                  ℹ️
-                </Text>
-
-                <Text
-                  style={
-                    styles.menuText
-                  }
-                >
-                  O aplikaci
-                </Text>
-              </TouchableOpacity>
-
-            </View>
-          </View>
-        </Modal>
-
-        {/* ULOŽENÉ CHATY */}
-
-        <Modal
-          visible={savedVisible}
-          transparent
-          animationType="slide"
-          onRequestClose={() =>
-            setSavedVisible(false)
-          }
-        >
-          <View
-            style={styles.modalOverlay}
-          >
-            <View
-              style={styles.moreModal}
-            >
-
-              <View
-                style={styles.modalHeader}
-              >
-                <Text
-                  style={styles.modalTitle}
-                >
-                  💾 Uložené chaty
-                </Text>
-
-                <TouchableOpacity
-                  onPress={() =>
-                    setSavedVisible(false)
-                  }
-                >
-                  <Text
-                    style={
-                      styles.closeText
-                    }
-                  >
-                    ✕
-                  </Text>
-                </TouchableOpacity>
-              </View>
-
-              {savedChats.length ===
-              0 ? (
-                <View
-                  style={
-                    styles.emptyState
-                  }
-                >
-                  <Text
-                    style={
-                      styles.emptyText
-                    }
-                  >
-                    Zatím tu nic není 😈
-                  </Text>
-                </View>
-              ) : (
-                <FlatList
-                  data={savedChats}
-                  keyExtractor={(item) =>
-                    item.id
-                  }
-                  showsVerticalScrollIndicator={
-                    false
-                  }
-                  renderItem={({
-                    item,
-                  }) => (
-                    <View
-                      style={
-                        styles.savedRow
-                      }
-                    >
-                      <TouchableOpacity
-                        style={
-                          styles.savedOpen
-                        }
-                        onPress={() =>
-                          openSavedChat(
-                            item
-                          )
-                        }
-                      >
-                        <Text
-                          style={
-                            styles.savedTitle
-                          }
-                          numberOfLines={2}
-                        >
-                          {item.title}
-                        </Text>
-
-                        <Text
-                          style={
-                            styles.savedDate
-                          }
-                        >
-                          {new Date(
-                            item.createdAt
-                          ).toLocaleDateString(
-                            "cs-CZ"
-                          )}
-                        </Text>
-                      </TouchableOpacity>
-
-                      <TouchableOpacity
-                        onPress={() =>
-                          deleteChat(
-                            item.id
-                          )
-                        }
-                      >
-                        <Text
-                          style={
-                            styles.deleteText
-                          }
-                        >
-                          🗑
-                        </Text>
-                      </TouchableOpacity>
-                    </View>
-                  )}
-                />
-              )}
-
-            </View>
-          </View>
-        </Modal>
-
-        {/* NASTAVENÍ */}
-
-        <Modal
-          visible={settingsVisible}
-          transparent
-          animationType="fade"
-          onRequestClose={() =>
-            setSettingsVisible(false)
-          }
-        >
-          <View
-            style={styles.modalOverlay}
-          >
-            <View
-              style={styles.infoModal}
-            >
-
-              <Text
-                style={styles.infoTitle}
-              >
-                ⚙️ Nastavení
-              </Text>
-
-              <Text
-                style={styles.infoText}
-              >
-                RýpAI
-              </Text>
-
-              <Text
-                style={styles.infoSmall}
-              >
-                Nastavení budeme postupně přidávat.
-              </Text>
-
-              <TouchableOpacity
-                style={
-                  styles.closeButton
-                }
-                onPress={() =>
-                  setSettingsVisible(false)
-                }
-              >
-                <Text
-                  style={
-                    styles.closeButtonText
-                  }
-                >
-                  Zavřít
-                </Text>
-              </TouchableOpacity>
-
-            </View>
-          </View>
-        </Modal>
-
-        {/* O APLIKACI */}
-
-        <Modal
-          visible={aboutVisible}
-          transparent
-          animationType="fade"
-          onRequestClose={() =>
-            setAboutVisible(false)
-          }
-        >
-          <View
-            style={styles.modalOverlay}
-          >
-            <View
-              style={styles.infoModal}
-            >
-
-              <Image
-                source={RYP_IMAGE}
-                style={styles.aboutLogo}
+              <Ionicons
+                name="camera"
+                size={24}
+                color="#8BB8FF"
               />
 
               <Text
-                style={styles.aboutTitle}
+                style={styles.modalButtonText}
               >
-                RýpAI
+                Vyfotit
               </Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={styles.modalButton}
+              onPress={() =>
+                pickPhoto(false)
+              }
+            >
+              <Ionicons
+                name="images"
+                size={24}
+                color="#8BB8FF"
+              />
 
               <Text
-                style={styles.aboutText}
+                style={styles.modalButtonText}
               >
-                Tvůj AI kámoš, co se s tebou nemaže 😈
+                Vybrat z galerie
               </Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={styles.closeButton}
+              onPress={() =>
+                setModal(null)
+              }
+            >
+              <Text style={styles.closeText}>
+                Zavřít
+              </Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
+
+      {/* FOTO */}
+      <Modal
+        visible={modal === "photo"}
+        transparent
+        animationType="slide"
+      >
+        <View style={styles.modalBackdrop}>
+          <View style={styles.photoModal}>
+            <Text style={styles.modalTitle}>
+              Tvoje fotka
+            </Text>
+
+            {photo && (
+              <Image
+                source={{ uri: photo }}
+                style={styles.photoPreview}
+              />
+            )}
+
+            <TouchableOpacity
+              style={styles.modalButton}
+              onPress={() => {
+                setModal(null);
+                setInput(
+                  "Podívej se na tuhle fotku a řekni mi, co na ní vidíš."
+                );
+                setActiveTab("chat");
+              }}
+            >
+              <Ionicons
+                name="chatbubble-ellipses"
+                size={24}
+                color="#A6FF00"
+              />
 
               <Text
-                style={styles.version}
+                style={styles.modalButtonText}
               >
-                Verze 1.1
+                Použít v chatu
               </Text>
+            </TouchableOpacity>
 
-              <TouchableOpacity
-                style={
-                  styles.closeButton
-                }
-                onPress={() =>
-                  setAboutVisible(false)
-                }
+            <TouchableOpacity
+              style={styles.closeButton}
+              onPress={() =>
+                setModal(null)
+              }
+            >
+              <Text style={styles.closeText}>
+                Zavřít
+              </Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
+
+      {/* HRY */}
+      <Modal
+        visible={modal === "games"}
+        transparent
+        animationType="slide"
+      >
+        <View style={styles.modalBackdrop}>
+          <View style={styles.modalBox}>
+            <Text style={styles.modalTitle}>
+              Hry
+            </Text>
+
+            <View style={styles.gameCard}>
+              <Ionicons
+                name="game-controller"
+                size={38}
+                color="#8BB8FF"
+              />
+
+              <View
+                style={{
+                  flex: 1,
+                  marginLeft: 14,
+                }}
               >
+                <Text style={styles.gameTitle}>
+                  Rýpovy hry
+                </Text>
+
                 <Text
                   style={
-                    styles.closeButtonText
+                    styles.gameDescription
                   }
                 >
-                  Zavřít
+                  Herní sekce je připravená na další minihry.
                 </Text>
-              </TouchableOpacity>
-
+              </View>
             </View>
-          </View>
-        </Modal>
 
-      </KeyboardAvoidingView>
+            <TouchableOpacity
+              style={styles.closeButton}
+              onPress={() =>
+                setModal(null)
+              }
+            >
+              <Text style={styles.closeText}>
+                Zavřít
+              </Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
+
+      {/* DALŠÍ */}
+      <Modal
+        visible={modal === "more"}
+        transparent
+        animationType="slide"
+      >
+        <View style={styles.modalBackdrop}>
+          <View style={styles.modalBox}>
+            <Text style={styles.modalTitle}>
+              Další
+            </Text>
+
+            <TouchableOpacity
+              style={styles.modalButton}
+              onPress={() =>
+                setModal("saved")
+              }
+            >
+              <Ionicons
+                name="bookmark"
+                size={24}
+                color="#8BB8FF"
+              />
+
+              <Text
+                style={styles.modalButtonText}
+              >
+                Uložené chaty
+              </Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={styles.modalButton}
+              onPress={saveChat}
+            >
+              <Ionicons
+                name="save"
+                size={24}
+                color="#A6FF00"
+              />
+
+              <Text
+                style={styles.modalButtonText}
+              >
+                Uložit tento chat
+              </Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={styles.modalButton}
+              onPress={newChat}
+            >
+              <Ionicons
+                name="add-circle"
+                size={24}
+                color="#8BB8FF"
+              />
+
+              <Text
+                style={styles.modalButtonText}
+              >
+                Nový chat
+              </Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={styles.modalButton}
+              onPress={() =>
+                setModal("about")
+              }
+            >
+              <Ionicons
+                name="information-circle"
+                size={24}
+                color="#8BB8FF"
+              />
+
+              <Text
+                style={styles.modalButtonText}
+              >
+                O Rýpovi
+              </Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={styles.closeButton}
+              onPress={() =>
+                setModal(null)
+              }
+            >
+              <Text style={styles.closeText}>
+                Zavřít
+              </Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
+
+      {/* ULOŽENÉ CHATY */}
+      <Modal
+        visible={modal === "saved"}
+        transparent
+        animationType="slide"
+      >
+        <View style={styles.modalBackdrop}>
+          <View style={styles.savedBox}>
+            <Text style={styles.modalTitle}>
+              Uložené chaty
+            </Text>
+
+            {savedChats.length === 0 ? (
+              <Text style={styles.emptyText}>
+                Zatím tu nic není.
+              </Text>
+            ) : (
+              <FlatList
+                data={savedChats}
+                keyExtractor={(item) =>
+                  item.id
+                }
+                showsVerticalScrollIndicator={
+                  false
+                }
+                renderItem={({
+                  item,
+                }) => (
+                  <View
+                    style={styles.savedRow}
+                  >
+                    <TouchableOpacity
+                      style={{ flex: 1 }}
+                      onPress={() =>
+                        openChat(item)
+                      }
+                    >
+                      <Text
+                        style={
+                          styles.savedTitle
+                        }
+                      >
+                        {item.title}
+                      </Text>
+
+                      <Text
+                        style={
+                          styles.savedDate
+                        }
+                      >
+                        {item.date}
+                      </Text>
+                    </TouchableOpacity>
+
+                    <TouchableOpacity
+                      onPress={() =>
+                        deleteChat(item.id)
+                      }
+                    >
+                      <Ionicons
+                        name="trash-outline"
+                        size={23}
+                        color="#FF657A"
+                      />
+                    </TouchableOpacity>
+                  </View>
+                )}
+              />
+            )}
+
+            <TouchableOpacity
+              style={styles.closeButton}
+              onPress={() =>
+                setModal(null)
+              }
+            >
+              <Text style={styles.closeText}>
+                Zavřít
+              </Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
+
+      {/* O RÝPOVI */}
+      <Modal
+        visible={modal === "about"}
+        transparent
+        animationType="fade"
+      >
+        <View style={styles.modalBackdrop}>
+          <View style={styles.aboutBox}>
+            <Image
+              source={RYP_IMAGE}
+              style={styles.aboutImage}
+            />
+
+            <Text style={styles.aboutTitle}>
+              RýpAI
+            </Text>
+
+            <Text style={styles.aboutText}>
+              AI, která se s tebou nemaže. 😈
+            </Text>
+
+            <Text style={styles.version}>
+              Verze 1.1
+            </Text>
+
+            <TouchableOpacity
+              style={styles.closeButton}
+              onPress={() =>
+                setModal(null)
+              }
+            >
+              <Text style={styles.closeText}>
+                Zavřít
+              </Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
     </SafeAreaView>
   );
 }
 
-/* =========================
-   STYLY
-========================= */
+function BottomButton({
+  active,
+  icon,
+  label,
+  onPress,
+}) {
+  return (
+    <TouchableOpacity
+      style={styles.bottomButton}
+      onPress={onPress}
+      activeOpacity={0.75}
+    >
+      <Ionicons
+        name={icon}
+        size={42}
+        color={
+          active
+            ? "#A6FF00"
+            : "#8EA8D1"
+        }
+      />
+
+      <Text
+        style={[
+          styles.bottomLabel,
+          active &&
+            styles.bottomLabelActive,
+        ]}
+      >
+        {label}
+      </Text>
+
+      {active && (
+        <View style={styles.activeLine} />
+      )}
+    </TouchableOpacity>
+  );
+}
 
 const styles = StyleSheet.create({
-
-  safeArea: {
+  safe: {
     flex: 1,
-    backgroundColor: "#080C12",
+    backgroundColor: "#02070D",
   },
 
   container: {
     flex: 1,
-    backgroundColor: "#080C12",
+    backgroundColor: "#02070D",
   },
 
-  header: {
-    height: 78,
-    paddingHorizontal: 16,
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    backgroundColor: "#0B1119",
-    borderBottomWidth: 1,
-    borderBottomColor: "#182433",
-  },
-
-  headerLeft: {
-    flexDirection: "row",
-    alignItems: "center",
-    flex: 1,
-  },
-
-  headerAvatar: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
-    marginRight: 12,
-  },
-
-  logoText: {
-    color: "#8CFF00",
-    fontSize: 25,
-    fontWeight: "900",
-  },
-
-  subtitleText: {
-    color: "#91A8CA",
-    fontSize: 11,
-    marginTop: 2,
-  },
-
-  headerButton: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
-    backgroundColor: "#111D2A",
-    borderWidth: 1,
-    borderColor: "#20344A",
-    alignItems: "center",
-    justifyContent: "center",
-  },
-
-  headerButtonText: {
-    color: "#8CFF00",
-    fontSize: 28,
-    lineHeight: 30,
-  },
-
-  chatList: {
-    flex: 1,
-    paddingHorizontal: 12,
+  backgroundGlow: {
+    position: "absolute",
+    width: width * 0.85,
+    height: width * 0.85,
+    borderRadius: width,
+    backgroundColor: "#06233A",
+    opacity: 0.18,
+    top: -width * 0.42,
+    alignSelf: "center",
   },
 
   chatContent: {
-    paddingTop: 14,
-    paddingBottom: 12,
+    paddingTop: 4,
+    paddingBottom: 15,
+  },
+
+  hero: {
+    alignItems: "center",
+    paddingTop: 4,
+    paddingBottom: 18,
+  },
+
+  heroArtwork: {
+    width: 250,
+    height: 250,
+    alignItems: "center",
+    justifyContent: "center",
+    position: "relative",
+  },
+
+  blueRing: {
+    position: "absolute",
+    width: 226,
+    height: 226,
+    borderRadius: 113,
+    borderWidth: 6,
+    borderColor: "#00A8FF",
+    opacity: 0.9,
+  },
+
+  heroImage: {
+    width: 220,
+    height: 220,
+    borderRadius: 110,
+    resizeMode: "cover",
+  },
+
+  logoText: {
+    marginTop: -5,
+    color: "#FFFFFF",
+    fontSize: 76,
+    lineHeight: 84,
+    fontWeight: "900",
+    fontStyle: "italic",
+    letterSpacing: -4,
+    textShadowColor: "#009EFF",
+    textShadowOffset: {
+      width: 7,
+      height: 5,
+    },
+    textShadowRadius: 0,
+  },
+
+  logoStroke: {
+    width: 180,
+    height: 12,
+    backgroundColor: "#00A8FF",
+    borderRadius: 10,
+    transform: [
+      { rotate: "-5deg" },
+    ],
+    marginTop: -6,
+    marginLeft: 38,
+  },
+
+  slogan: {
+    color: "#8EA8D1",
+    fontSize: 25,
+    fontWeight: "600",
+    marginTop: 16,
+    textAlign: "center",
+  },
+
+  crown: {
+    color: "#00A8FF",
+    fontSize: 30,
   },
 
   messageRow: {
     flexDirection: "row",
-    marginBottom: 10,
     alignItems: "flex-end",
+    paddingHorizontal: 28,
+    marginTop: 10,
+    marginBottom: 10,
   },
 
-  userRow: {
+  messageRowMine: {
     justifyContent: "flex-end",
   },
 
-  assistantRow: {
-    justifyContent: "flex-start",
-  },
-
   messageAvatar: {
-    width: 34,
-    height: 34,
-    borderRadius: 17,
-    marginRight: 8,
+    width: 84,
+    height: 84,
+    borderRadius: 42,
+    borderWidth: 3,
+    borderColor: "#00A8FF",
+    marginRight: 16,
   },
 
   messageBubble: {
-    maxWidth: "82%",
-    paddingHorizontal: 14,
-    paddingVertical: 11,
-    borderRadius: 18,
+    maxWidth: "79%",
+    paddingHorizontal: 24,
+    paddingVertical: 22,
+    borderRadius: 32,
+  },
+
+  aiBubble: {
+    backgroundColor: "#182231",
+    borderWidth: 1,
+    borderColor: "#23344A",
   },
 
   userBubble: {
-    backgroundColor: "#193329",
-    borderBottomRightRadius: 5,
-  },
-
-  assistantBubble: {
-    backgroundColor: "#111B27",
-    borderWidth: 1,
-    borderColor: "#1D3045",
-    borderBottomLeftRadius: 5,
+    backgroundColor: "#A6FF00",
   },
 
   messageText: {
-    color: "#EAF0F7",
-    fontSize: 15,
-    lineHeight: 22,
-  },
-
-  linkText: {
-    color: "#4DB8FF",
-    textDecorationLine: "underline",
+    color: "#F2F7FF",
+    fontSize: 23,
+    lineHeight: 31,
   },
 
   loadingRow: {
     flexDirection: "row",
     alignItems: "center",
-    paddingHorizontal: 12,
+    marginHorizontal: 30,
     marginBottom: 8,
   },
 
   loadingAvatar: {
-    width: 30,
-    height: 30,
-    borderRadius: 15,
-    marginRight: 8,
-  },
-
-  loadingBubble: {
-    backgroundColor: "#111B27",
-    borderRadius: 15,
-    paddingHorizontal: 12,
-    paddingVertical: 8,
+    width: 34,
+    height: 34,
+    borderRadius: 17,
+    marginRight: 10,
   },
 
   loadingText: {
-    color: "#91A8CA",
-    fontSize: 13,
+    color: "#8EA8D1",
+    fontSize: 15,
   },
 
-  inputArea: {
-    marginHorizontal: 10,
-    marginBottom: 8,
-    minHeight: 58,
-    maxHeight: 120,
-    borderRadius: 20,
-    backgroundColor: "#101923",
-    borderWidth: 1,
-    borderColor: "#203247",
+  composerRow: {
     flexDirection: "row",
     alignItems: "center",
-    paddingHorizontal: 7,
+    paddingHorizontal: 32,
+    paddingTop: 8,
+    paddingBottom: 14,
   },
 
   cameraButton: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
+    width: 126,
+    height: 126,
+    borderRadius: 63,
+    borderWidth: 2,
+    borderColor: "#0D73B9",
+    backgroundColor: "#091522",
     alignItems: "center",
     justifyContent: "center",
+    marginRight: 16,
   },
 
-  cameraIcon: {
-    fontSize: 22,
-  },
-
-  textInput: {
+  input: {
     flex: 1,
-    color: "#FFFFFF",
-    fontSize: 15,
-    paddingHorizontal: 7,
-    paddingVertical: 10,
-    maxHeight: 100,
+    minHeight: 112,
+    maxHeight: 145,
+    backgroundColor: "#101B29",
+    borderWidth: 2,
+    borderColor: "#1C426D",
+    borderRadius: 58,
+    paddingHorizontal: 32,
+    paddingVertical: 26,
+    color: "#F2F7FF",
+    fontSize: 25,
   },
 
   sendButton: {
-    width: 46,
-    height: 46,
-    borderRadius: 23,
-    backgroundColor: "#8CFF00",
+    width: 126,
+    height: 126,
+    borderRadius: 63,
+    backgroundColor: "#A6FF00",
     alignItems: "center",
     justifyContent: "center",
+    marginLeft: 16,
   },
 
-  sendButtonDisabled: {
-    opacity: 0.35,
-  },
-
-  sendIcon: {
-    color: "#071008",
-    fontSize: 23,
-    fontWeight: "900",
-  },
-
-  bottomNav: {
-    height: 68,
-    marginHorizontal: 10,
-    marginBottom: 8,
-    borderRadius: 22,
-    backgroundColor: "#0F1823",
-    borderWidth: 1,
-    borderColor: "#203247",
+  bottomBar: {
+    height: 142,
+    borderTopWidth: 2,
+    borderColor: "#12304F",
+    backgroundColor: "#07111C",
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-around",
+    paddingHorizontal: 8,
+    paddingBottom:
+      Platform.OS === "ios" ? 10 : 2,
   },
 
-  navItem: {
+  bottomButton: {
     flex: 1,
-    height: "100%",
     alignItems: "center",
     justifyContent: "center",
+    height: "100%",
+    position: "relative",
   },
 
-  navIcon: {
+  bottomLabel: {
+    color: "#8EA8D1",
     fontSize: 20,
-    opacity: 0.7,
-  },
-
-  navIconActive: {
-    opacity: 1,
-  },
-
-  navText: {
-    color: "#6F8198",
-    fontSize: 11,
     fontWeight: "700",
-    marginTop: 3,
+    marginTop: 4,
   },
 
-  navActiveText: {
-    color: "#8CFF00",
+  bottomLabelActive: {
+    color: "#A6FF00",
   },
 
-  modalOverlay: {
+  activeLine: {
+    position: "absolute",
+    bottom: 7,
+    width: 82,
+    height: 5,
+    borderRadius: 5,
+    backgroundColor: "#A6FF00",
+  },
+
+  modalBackdrop: {
     flex: 1,
     backgroundColor:
       "rgba(0,0,0,0.78)",
-    justifyContent: "center",
-    alignItems: "center",
-    padding: 14,
+    justifyContent: "flex-end",
+  },
+
+  modalBox: {
+    backgroundColor: "#0B1623",
+    borderTopLeftRadius: 32,
+    borderTopRightRadius: 32,
+    borderWidth: 1,
+    borderColor: "#244464",
+    padding: 26,
+    paddingBottom: 36,
   },
 
   photoModal: {
-    width: "96%",
-    maxHeight: "90%",
-    backgroundColor: "#0D1621",
-    borderRadius: 24,
-    borderWidth: 1,
-    borderColor: "#203247",
-    padding: 16,
-  },
-
-  moreModal: {
-    width: "94%",
-    backgroundColor: "#0D1621",
-    borderRadius: 24,
-    borderWidth: 1,
-    borderColor: "#203247",
-    padding: 18,
-  },
-
-  infoModal: {
-    width: "90%",
-    backgroundColor: "#0D1621",
-    borderRadius: 24,
-    borderWidth: 1,
-    borderColor: "#203247",
+    backgroundColor: "#0B1623",
+    borderTopLeftRadius: 32,
+    borderTopRightRadius: 32,
     padding: 22,
-    alignItems: "center",
+    paddingBottom: 35,
+    maxHeight: "90%",
   },
 
-  modalHeader: {
-    flexDirection: "row",
+  savedBox: {
+    backgroundColor: "#0B1623",
+    borderTopLeftRadius: 32,
+    borderTopRightRadius: 32,
+    padding: 24,
+    paddingBottom: 35,
+    maxHeight: "80%",
+  },
+
+  aboutBox: {
+    backgroundColor: "#0B1623",
+    marginHorizontal: 25,
+    borderRadius: 30,
+    borderWidth: 1,
+    borderColor: "#244464",
+    padding: 28,
     alignItems: "center",
-    justifyContent: "space-between",
-    marginBottom: 16,
   },
 
   modalTitle: {
     color: "#FFFFFF",
-    fontSize: 21,
+    fontSize: 28,
     fontWeight: "900",
+    marginBottom: 20,
+  },
+
+  modalButton: {
+    minHeight: 58,
+    borderRadius: 18,
+    backgroundColor: "#111F30",
+    borderWidth: 1,
+    borderColor: "#213B58",
+    flexDirection: "row",
+    alignItems: "center",
+    paddingHorizontal: 18,
+    marginBottom: 10,
+  },
+
+  modalButtonText: {
+    color: "#F1F6FF",
+    fontSize: 18,
+    fontWeight: "700",
+    marginLeft: 13,
+  },
+
+  closeButton: {
+    alignItems: "center",
+    justifyContent: "center",
+    minHeight: 50,
+    marginTop: 8,
   },
 
   closeText: {
-    color: "#8CFF00",
-    fontSize: 25,
-    fontWeight: "800",
+    color: "#8EA8D1",
+    fontSize: 17,
+    fontWeight: "700",
   },
 
   photoPreview: {
     width: "100%",
-    height: 330,
-    borderRadius: 20,
-    backgroundColor: "#03070D",
+    height: 390,
+    borderRadius: 22,
+    backgroundColor: "#02070D",
+    marginBottom: 16,
   },
 
-  noPhoto: {
-    height: 260,
-    alignItems: "center",
-    justifyContent: "center",
-    backgroundColor: "#08111D",
-    borderRadius: 20,
-  },
-
-  noPhotoText: {
-    color: "#91A8CA",
-    fontSize: 15,
-  },
-
-  photoButtons: {
+  gameCard: {
     flexDirection: "row",
-    justifyContent: "space-between",
-    marginTop: 12,
-  },
-
-  photoButton: {
-    flex: 1,
-    minHeight: 48,
-    marginHorizontal: 4,
-    borderRadius: 16,
-    backgroundColor: "#132235",
-    borderWidth: 1,
-    borderColor: "#203B58",
     alignItems: "center",
-    justifyContent: "center",
+    backgroundColor: "#111F30",
+    borderWidth: 1,
+    borderColor: "#213B58",
+    borderRadius: 20,
+    padding: 18,
   },
 
-  photoButtonText: {
+  gameTitle: {
     color: "#FFFFFF",
-    fontSize: 13,
+    fontSize: 20,
     fontWeight: "800",
   },
 
-  menuItem: {
-    minHeight: 60,
-    flexDirection: "row",
-    alignItems: "center",
-    borderBottomWidth: 1,
-    borderBottomColor: "#192A3D",
-  },
-
-  menuIcon: {
-    fontSize: 21,
-    width: 38,
-  },
-
-  menuText: {
-    color: "#FFFFFF",
-    fontSize: 16,
-    fontWeight: "700",
+  gameDescription: {
+    color: "#8EA8D1",
+    fontSize: 14,
+    marginTop: 4,
+    lineHeight: 19,
   },
 
   savedRow: {
     flexDirection: "row",
     alignItems: "center",
-    borderBottomWidth: 1,
-    borderBottomColor: "#192A3D",
-    paddingVertical: 13,
-  },
-
-  savedOpen: {
-    flex: 1,
-    marginRight: 10,
+    backgroundColor: "#111F30",
+    borderWidth: 1,
+    borderColor: "#213B58",
+    borderRadius: 17,
+    padding: 15,
+    marginBottom: 9,
   },
 
   savedTitle: {
     color: "#FFFFFF",
-    fontSize: 15,
+    fontSize: 17,
     fontWeight: "700",
   },
 
   savedDate: {
-    color: "#657A92",
-    fontSize: 11,
+    color: "#7892B8",
+    fontSize: 12,
     marginTop: 4,
   },
 
-  deleteText: {
-    fontSize: 19,
-    padding: 8,
-  },
-
-  emptyState: {
-    alignItems: "center",
-    justifyContent: "center",
-    paddingVertical: 40,
-  },
-
   emptyText: {
-    color: "#91A8CA",
-    fontSize: 14,
+    color: "#8EA8D1",
+    fontSize: 16,
+    textAlign: "center",
+    paddingVertical: 30,
   },
 
-  infoTitle: {
-    color: "#8CFF00",
-    fontSize: 25,
-    fontWeight: "900",
+  aboutImage: {
+    width: 110,
+    height: 110,
+    borderRadius: 55,
+    borderWidth: 3,
+    borderColor: "#00A8FF",
     marginBottom: 12,
   },
 
-  infoText: {
-    color: "#FFFFFF",
-    fontSize: 18,
-    fontWeight: "700",
-  },
-
-  infoSmall: {
-    color: "#91A8CA",
-    fontSize: 13,
-    textAlign: "center",
-    marginTop: 8,
-    marginBottom: 20,
-  },
-
-  aboutLogo: {
-    width: 88,
-    height: 88,
-    borderRadius: 44,
-    marginBottom: 10,
-  },
-
   aboutTitle: {
-    color: "#8CFF00",
-    fontSize: 28,
+    color: "#A6FF00",
+    fontSize: 34,
     fontWeight: "900",
   },
 
   aboutText: {
-    color: "#C5D2E2",
-    fontSize: 15,
+    color: "#C7D7ED",
+    fontSize: 17,
+    marginTop: 6,
     textAlign: "center",
-    lineHeight: 22,
-    marginTop: 10,
   },
 
   version: {
-    color: "#657A92",
-    fontSize: 12,
+    color: "#7188A8",
+    fontSize: 13,
     marginTop: 12,
-    marginBottom: 20,
   },
-
-  closeButton: {
-    width: "100%",
-    minHeight: 48,
-    borderRadius: 16,
-    backgroundColor: "#8CFF00",
-    alignItems: "center",
-    justifyContent: "center",
-  },
-
-  closeButtonText: {
-    color: "#071008",
-    fontSize: 15,
-    fontWeight: "900",
-  },
-
 });

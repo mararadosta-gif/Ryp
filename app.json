@@ -7,7 +7,7 @@
     "icon": "./file_00000000e44c81f4b86b60e21106fc88.png",
     "android": {
       "package": "com.mara.rypai",
-      "versionCode": 10
+      "versionCode": 11
     },
     "extra": {
       "eas": {

@@ -383,9 +383,43 @@ export default function App() {
         behavior={
           Platform.OS === "ios"
             ? "padding"
-            : undefined
+            : "height"
         }
       >
+
+        {/* DECENTNÍ MODRO-ČERNÉ POZADÍ */}
+
+        <View
+          pointerEvents="none"
+          style={styles.backgroundPattern}
+        >
+          <View
+            style={styles.patternLine1}
+          />
+          <View
+            style={styles.patternLine2}
+          />
+          <View
+            style={styles.patternLine3}
+          />
+          <View
+            style={styles.patternLine4}
+          />
+
+          <View
+            style={styles.patternCircle1}
+          />
+
+          <View
+            style={styles.patternCircle2}
+          />
+
+          <Text
+            style={styles.rypalWatermark}
+          >
+            Rýpal
+          </Text>
+        </View>
 
         <View
           style={styles.backgroundGlow}
@@ -405,6 +439,7 @@ export default function App() {
           contentContainerStyle={
             styles.chatContent
           }
+          keyboardShouldPersistTaps="handled"
           ListHeaderComponent={
             <View style={styles.hero}>
 
@@ -499,6 +534,7 @@ export default function App() {
             style={styles.input}
             multiline
             maxLength={2000}
+            blurOnSubmit={false}
           />
 
           <TouchableOpacity
@@ -1105,6 +1141,115 @@ const styles = StyleSheet.create({
     backgroundColor: "#02070D",
   },
 
+  /* DECENTNÍ MODRO-ČERNÝ VZOR */
+
+  backgroundPattern: {
+    ...StyleSheet.absoluteFillObject,
+    overflow: "hidden",
+    backgroundColor: "#02070D",
+    zIndex: 0,
+  },
+
+  patternLine1: {
+    position: "absolute",
+    width: u(260),
+    height: u(1),
+    backgroundColor: "#0A3558",
+    opacity: 0.35,
+    top: u(180),
+    left: u(-55),
+    transform: [
+      {
+        rotate: "-24deg",
+      },
+    ],
+  },
+
+  patternLine2: {
+    position: "absolute",
+    width: u(210),
+    height: u(1),
+    backgroundColor: "#0B426C",
+    opacity: 0.28,
+    top: u(330),
+    right: u(-45),
+    transform: [
+      {
+        rotate: "-24deg",
+      },
+    ],
+  },
+
+  patternLine3: {
+    position: "absolute",
+    width: u(240),
+    height: u(1),
+    backgroundColor: "#0A3558",
+    opacity: 0.25,
+    bottom: u(190),
+    left: u(-70),
+    transform: [
+      {
+        rotate: "-24deg",
+      },
+    ],
+  },
+
+  patternLine4: {
+    position: "absolute",
+    width: u(190),
+    height: u(1),
+    backgroundColor: "#0B426C",
+    opacity: 0.24,
+    bottom: u(100),
+    right: u(-50),
+    transform: [
+      {
+        rotate: "-24deg",
+      },
+    ],
+  },
+
+  patternCircle1: {
+    position: "absolute",
+    width: u(95),
+    height: u(95),
+    borderRadius: u(48),
+    borderWidth: u(1),
+    borderColor: "#0A4C7C",
+    opacity: 0.22,
+    top: u(250),
+    right: u(-35),
+  },
+
+  patternCircle2: {
+    position: "absolute",
+    width: u(65),
+    height: u(65),
+    borderRadius: u(33),
+    borderWidth: u(1),
+    borderColor: "#0A4C7C",
+    opacity: 0.18,
+    bottom: u(230),
+    left: u(-20),
+  },
+
+  rypalWatermark: {
+    position: "absolute",
+    color: "#1689C9",
+    fontSize: u(38),
+    fontWeight: "900",
+    fontStyle: "italic",
+    opacity: 0.055,
+    top: "47%",
+    alignSelf: "center",
+    transform: [
+      {
+        rotate: "-12deg",
+      },
+    ],
+  },
+
   backgroundGlow: {
     position: "absolute",
     width: u(300),
@@ -1114,6 +1259,7 @@ const styles = StyleSheet.create({
     opacity: 0.18,
     top: u(-150),
     alignSelf: "center",
+    zIndex: 1,
   },
 
   chatContent: {
@@ -1263,6 +1409,8 @@ const styles = StyleSheet.create({
     paddingHorizontal: u(13),
     paddingTop: u(5),
     paddingBottom: u(7),
+    backgroundColor: "transparent",
+    zIndex: 5,
   },
 
   cameraButton: {
@@ -1310,6 +1458,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "space-around",
     paddingHorizontal: u(3),
+    zIndex: 5,
   },
 
   bottomButton: {

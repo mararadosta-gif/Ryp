@@ -81,6 +81,47 @@ function Message({ item }) {
   );
 }
 
+function BottomButton({
+  active,
+  icon,
+  label,
+  onPress,
+}) {
+  return (
+    <TouchableOpacity
+      style={styles.bottomButton}
+      onPress={onPress}
+      activeOpacity={0.75}
+    >
+      <Ionicons
+        name={icon}
+        size={u(23)}
+        color={
+          active
+            ? "#A6FF00"
+            : "#8EA8D1"
+        }
+      />
+
+      <Text
+        style={[
+          styles.bottomLabel,
+          active &&
+            styles.bottomLabelActive,
+        ]}
+      >
+        {label}
+      </Text>
+
+      {active && (
+        <View
+          style={styles.activeDot}
+        />
+      )}
+    </TouchableOpacity>
+  );
+}
+
 export default function App() {
   const [messages, setMessages] = useState([
     WELCOME,
@@ -375,7 +416,7 @@ export default function App() {
 
       <StatusBar
         barStyle="light-content"
-        backgroundColor="#02070D"
+        backgroundColor="#020914"
       />
 
       <KeyboardAvoidingView
@@ -387,8 +428,6 @@ export default function App() {
         }
       >
 
-        {/* DECENTNÍ MODRO-ČERNÉ POZADÍ */}
-
         <View
           pointerEvents="none"
           style={styles.backgroundPattern}
@@ -396,12 +435,15 @@ export default function App() {
           <View
             style={styles.patternLine1}
           />
+
           <View
             style={styles.patternLine2}
           />
+
           <View
             style={styles.patternLine3}
           />
+
           <View
             style={styles.patternLine4}
           />
@@ -473,6 +515,7 @@ export default function App() {
               >
                 AI, která se s tebou
                 nemaže.
+
                 <Text
                   style={styles.crown}
                 >
@@ -557,8 +600,6 @@ export default function App() {
 
         </View>
 
-        {/* SPODNÍ MENU – BEZ HER */}
-
         <View
           style={styles.bottomBar}
         >
@@ -599,8 +640,6 @@ export default function App() {
         </View>
 
       </KeyboardAvoidingView>
-
-      {/* FOTO MENU */}
 
       <Modal
         visible={
@@ -689,8 +728,6 @@ export default function App() {
         </View>
       </Modal>
 
-      {/* FOTO */}
-
       <Modal
         visible={
           modal === "photo"
@@ -730,9 +767,11 @@ export default function App() {
               }
               onPress={() => {
                 setModal(null);
+
                 setInput(
                   "Podívej se na tuhle fotku a řekni mi, co na ní vidíš."
                 );
+
                 setActiveTab(
                   "chat"
                 );
@@ -771,8 +810,6 @@ export default function App() {
           </View>
         </View>
       </Modal>
-
-      {/* DALŠÍ */}
 
       <Modal
         visible={
@@ -903,8 +940,6 @@ export default function App() {
         </View>
       </Modal>
 
-      {/* ULOŽENÉ CHATY */}
-
       <Modal
         visible={
           modal === "saved"
@@ -988,11 +1023,14 @@ export default function App() {
                           item.id
                         )
                       }
+                      style={
+                        styles.deleteButton
+                      }
                     >
                       <Ionicons
                         name="trash-outline"
-                        size={u(21)}
-                        color="#FF657A"
+                        size={u(20)}
+                        color="#FF6680"
                       />
                     </TouchableOpacity>
 
@@ -1020,8 +1058,6 @@ export default function App() {
         </View>
       </Modal>
 
-      {/* O RÝPOVI */}
-
       <Modal
         visible={
           modal === "about"
@@ -1046,13 +1082,17 @@ export default function App() {
             />
 
             <Text
-              style={styles.aboutTitle}
+              style={
+                styles.aboutTitle
+              }
             >
               RýpAI
             </Text>
 
             <Text
-              style={styles.aboutText}
+              style={
+                styles.aboutText
+              }
             >
               AI, která se s tebou
               nemaže. 😈
@@ -1087,61 +1127,17 @@ export default function App() {
   );
 }
 
-function BottomButton({
-  active,
-  icon,
-  label,
-  onPress,
-}) {
-  return (
-    <TouchableOpacity
-      style={styles.bottomButton}
-      onPress={onPress}
-      activeOpacity={0.75}
-    >
-      <Ionicons
-        name={icon}
-        size={u(24)}
-        color={
-          active
-            ? "#A6FF00"
-            : "#8EA8D1"
-        }
-      />
-
-      <Text
-        style={[
-          styles.bottomLabel,
-          active &&
-            styles.bottomLabelActive,
-        ]}
-      >
-        {label}
-      </Text>
-
-      {active && (
-        <View
-          style={
-            styles.activeLine
-          }
-        />
-      )}
-    </TouchableOpacity>
-  );
-}
-
 const styles = StyleSheet.create({
+
   safe: {
     flex: 1,
-    backgroundColor: "#02070D",
+    backgroundColor: "#020914",
   },
 
   container: {
     flex: 1,
-    backgroundColor: "#02070D",
+    backgroundColor: "#020914",
   },
-
-  /* DECENTNÍ MODRO-ČERNÝ VZOR */
 
   backgroundPattern: {
     ...StyleSheet.absoluteFillObject,
@@ -1152,10 +1148,10 @@ const styles = StyleSheet.create({
 
   patternLine1: {
     position: "absolute",
-    width: u(260),
-    height: u(1),
-    backgroundColor: "#0A3558",
-    opacity: 0.35,
+    width: u(320),
+    height: u(2),
+    backgroundColor: "#087FC2",
+    opacity: 0.32,
     top: u(180),
     left: u(-55),
     transform: [
@@ -1167,9 +1163,9 @@ const styles = StyleSheet.create({
 
   patternLine2: {
     position: "absolute",
-    width: u(210),
-    height: u(1),
-    backgroundColor: "#0B426C",
+    width: u(270),
+    height: u(2),
+    backgroundColor: "#0B8ED5",
     opacity: 0.28,
     top: u(330),
     right: u(-45),
@@ -1182,9 +1178,9 @@ const styles = StyleSheet.create({
 
   patternLine3: {
     position: "absolute",
-    width: u(240),
-    height: u(1),
-    backgroundColor: "#0A3558",
+    width: u(300),
+    height: u(2),
+    backgroundColor: "#087FC2",
     opacity: 0.25,
     bottom: u(190),
     left: u(-70),
@@ -1197,9 +1193,9 @@ const styles = StyleSheet.create({
 
   patternLine4: {
     position: "absolute",
-    width: u(190),
-    height: u(1),
-    backgroundColor: "#0B426C",
+    width: u(250),
+    height: u(2),
+    backgroundColor: "#0B8ED5",
     opacity: 0.24,
     bottom: u(100),
     right: u(-50),
@@ -1212,35 +1208,35 @@ const styles = StyleSheet.create({
 
   patternCircle1: {
     position: "absolute",
-    width: u(95),
-    height: u(95),
-    borderRadius: u(48),
-    borderWidth: u(1),
-    borderColor: "#0A4C7C",
-    opacity: 0.22,
+    width: u(170),
+    height: u(170),
+    borderRadius: u(85),
+    borderWidth: u(2),
+    borderColor: "#078BD0",
+    opacity: 0.20,
     top: u(250),
     right: u(-35),
   },
 
   patternCircle2: {
     position: "absolute",
-    width: u(65),
-    height: u(65),
-    borderRadius: u(33),
-    borderWidth: u(1),
-    borderColor: "#0A4C7C",
-    opacity: 0.18,
+    width: u(115),
+    height: u(115),
+    borderRadius: u(58),
+    borderWidth: u(2),
+    borderColor: "#078BD0",
+    opacity: 0.16,
     bottom: u(230),
     left: u(-20),
   },
 
   rypalWatermark: {
     position: "absolute",
-    color: "#1689C9",
-    fontSize: u(38),
+    color: "#1AA9F5",
+    fontSize: u(46),
     fontWeight: "900",
     fontStyle: "italic",
-    opacity: 0.055,
+    opacity: 0.075,
     top: "47%",
     alignSelf: "center",
     transform: [
@@ -1252,100 +1248,89 @@ const styles = StyleSheet.create({
 
   backgroundGlow: {
     position: "absolute",
-    width: u(300),
-    height: u(300),
-    borderRadius: u(150),
-    backgroundColor: "#06233A",
-    opacity: 0.18,
-    top: u(-150),
+    width: u(420),
+    height: u(420),
+    borderRadius: u(210),
+    backgroundColor: "#064A78",
+    opacity: 0.24,
+    top: u(-210),
     alignSelf: "center",
     zIndex: 1,
   },
 
   chatContent: {
-    paddingTop: 0,
-    paddingBottom: u(8),
+    paddingTop: u(12),
+    paddingBottom: u(10),
   },
 
   hero: {
     alignItems: "center",
-    paddingTop: 0,
-    paddingBottom: u(8),
+    paddingTop: u(4),
+    paddingBottom: u(18),
   },
 
   heroArtwork: {
-    width: u(160),
-    height: u(160),
+    width: u(118),
+    height: u(118),
     alignItems: "center",
     justifyContent: "center",
-    position: "relative",
   },
 
   blueRing: {
     position: "absolute",
-    width: u(148),
-    height: u(148),
-    borderRadius: u(74),
-    borderWidth: u(4),
-    borderColor: "#00A8FF",
+    width: u(112),
+    height: u(112),
+    borderRadius: u(56),
+    borderWidth: u(2),
+    borderColor: "#008FE3",
+    opacity: 0.75,
   },
 
   heroImage: {
-    width: u(142),
-    height: u(142),
-    borderRadius: u(71),
-    resizeMode: "cover",
+    width: u(105),
+    height: u(105),
+    borderRadius: u(53),
   },
 
   logoText: {
-    marginTop: u(-3),
     color: "#FFFFFF",
-    fontSize: u(50),
-    lineHeight: u(55),
+    fontSize: u(48),
     fontWeight: "900",
     fontStyle: "italic",
-    letterSpacing: -u(2),
-    textShadowColor: "#009EFF",
-    textShadowOffset: {
-      width: u(4),
-      height: u(3),
-    },
-    textShadowRadius: 0,
+    marginTop: u(0),
   },
 
   logoStroke: {
-    width: u(125),
+    width: u(215),
     height: u(7),
-    backgroundColor: "#00A8FF",
-    borderRadius: u(8),
+    borderRadius: u(5),
+    backgroundColor: "#008FD4",
+    marginTop: u(-7),
     transform: [
       {
-        rotate: "-5deg",
+        rotate: "-2deg",
       },
     ],
-    marginTop: u(-2),
-    marginLeft: u(24),
   },
 
   slogan: {
     color: "#8EA8D1",
     fontSize: u(15),
     fontWeight: "600",
-    marginTop: u(7),
+    marginTop: u(13),
     textAlign: "center",
   },
 
   crown: {
-    color: "#00A8FF",
-    fontSize: u(18),
+    color: "#A6FF00",
+    fontSize: u(17),
   },
 
   messageRow: {
     flexDirection: "row",
     alignItems: "flex-end",
-    paddingHorizontal: u(16),
-    marginTop: u(5),
-    marginBottom: u(5),
+    paddingHorizontal: u(14),
+    marginBottom: u(10),
   },
 
   messageRowMine: {
@@ -1353,73 +1338,56 @@ const styles = StyleSheet.create({
   },
 
   messageAvatar: {
-    width: u(42),
-    height: u(42),
-    borderRadius: u(21),
-    borderWidth: u(2),
-    borderColor: "#00A8FF",
+    width: u(38),
+    height: u(38),
+    borderRadius: u(19),
     marginRight: u(8),
   },
 
   messageBubble: {
-    maxWidth: "79%",
+    maxWidth: "78%",
+    borderRadius: u(18),
     paddingHorizontal: u(14),
     paddingVertical: u(10),
-    borderRadius: u(19),
   },
 
   aiBubble: {
-    backgroundColor: "#182231",
+    backgroundColor: "#101D2C",
     borderWidth: 1,
-    borderColor: "#23344A",
+    borderColor: "#183650",
+    borderBottomLeftRadius: u(5),
   },
 
   userBubble: {
-    backgroundColor: "#A6FF00",
+    backgroundColor: "#6E9900",
+    borderBottomRightRadius: u(5),
   },
 
   messageText: {
-    color: "#F2F7FF",
-    fontSize: u(16),
-    lineHeight: u(22),
-  },
-
-  loadingRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    marginHorizontal: u(18),
-    marginBottom: u(5),
-  },
-
-  loadingAvatar: {
-    width: u(27),
-    height: u(27),
-    borderRadius: u(14),
-    marginRight: u(7),
-  },
-
-  loadingText: {
-    color: "#8EA8D1",
-    fontSize: u(13),
+    color: "#FFFFFF",
+    fontSize: u(15),
+    lineHeight: u(21),
   },
 
   composerRow: {
     flexDirection: "row",
-    alignItems: "center",
-    paddingHorizontal: u(13),
-    paddingTop: u(5),
-    paddingBottom: u(7),
-    backgroundColor: "transparent",
-    zIndex: 5,
+    alignItems: "flex-end",
+    paddingHorizontal: u(10),
+    paddingTop: u(8),
+    paddingBottom: u(8),
+    backgroundColor: "#050E18",
+    borderTopWidth: 1,
+    borderColor: "#102A42",
+    zIndex: 4,
   },
 
   cameraButton: {
-    width: u(53),
-    height: u(53),
-    borderRadius: u(27),
-    borderWidth: 1.5,
-    borderColor: "#0D73B9",
-    backgroundColor: "#091522",
+    width: u(48),
+    height: u(48),
+    borderRadius: u(16),
+    backgroundColor: "#0C1D2D",
+    borderWidth: 1,
+    borderColor: "#1B4668",
     alignItems: "center",
     justifyContent: "center",
     marginRight: u(7),
@@ -1427,22 +1395,23 @@ const styles = StyleSheet.create({
 
   input: {
     flex: 1,
-    minHeight: u(50),
-    maxHeight: u(88),
-    backgroundColor: "#101B29",
-    borderWidth: 1.5,
-    borderColor: "#1C426D",
-    borderRadius: u(26),
-    paddingHorizontal: u(16),
-    paddingVertical: u(11),
-    color: "#F2F7FF",
-    fontSize: u(16),
+    minHeight: u(48),
+    maxHeight: u(110),
+    backgroundColor: "#0A1725",
+    borderWidth: 1,
+    borderColor: "#173650",
+    borderRadius: u(17),
+    color: "#FFFFFF",
+    fontSize: u(15),
+    paddingHorizontal: u(14),
+    paddingTop: u(12),
+    paddingBottom: u(10),
   },
 
   sendButton: {
-    width: u(53),
-    height: u(53),
-    borderRadius: u(27),
+    width: u(48),
+    height: u(48),
+    borderRadius: u(16),
     backgroundColor: "#A6FF00",
     alignItems: "center",
     justifyContent: "center",
@@ -1450,14 +1419,20 @@ const styles = StyleSheet.create({
   },
 
   bottomBar: {
-    height: u(70),
+    height: u(76),
+    marginBottom:
+      Platform.OS === "android"
+        ? u(14)
+        : 0,
     borderTopWidth: 1,
-    borderColor: "#12304F",
-    backgroundColor: "#07111C",
+    borderColor: "#14517C",
+    backgroundColor: "#081522",
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-around",
     paddingHorizontal: u(3),
+    borderBottomLeftRadius: u(14),
+    borderBottomRightRadius: u(14),
     zIndex: 5,
   },
 
@@ -1466,120 +1441,156 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
     height: "100%",
+    paddingTop: u(2),
     position: "relative",
   },
 
   bottomLabel: {
     color: "#8EA8D1",
     fontSize: u(11),
-    fontWeight: "700",
-    marginTop: u(2),
+    marginTop: u(3),
+    fontWeight: "600",
   },
 
   bottomLabelActive: {
     color: "#A6FF00",
   },
 
-  activeLine: {
+  activeDot: {
     position: "absolute",
-    bottom: u(3),
-    width: u(40),
-    height: u(3),
+    bottom: u(5),
+    width: u(5),
+    height: u(5),
     borderRadius: u(3),
     backgroundColor: "#A6FF00",
+  },
+
+  loadingRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    paddingHorizontal: u(18),
+    paddingVertical: u(5),
+  },
+
+  loadingAvatar: {
+    width: u(30),
+    height: u(30),
+    borderRadius: u(15),
+    marginRight: u(8),
+  },
+
+  loadingText: {
+    color: "#8EA8D1",
+    fontSize: u(13),
+    fontStyle: "italic",
   },
 
   modalBackdrop: {
     flex: 1,
     backgroundColor:
-      "rgba(0,0,0,0.78)",
-    justifyContent: "flex-end",
+      "rgba(0,0,0,0.72)",
+    alignItems: "center",
+    justifyContent: "center",
+    paddingHorizontal: u(20),
   },
 
   modalBox: {
-    backgroundColor: "#0B1623",
-    borderTopLeftRadius: u(25),
-    borderTopRightRadius: u(25),
+    width: "100%",
+    maxWidth: u(390),
+    backgroundColor: "#081522",
     borderWidth: 1,
-    borderColor: "#244464",
+    borderColor: "#245074",
+    borderRadius: u(22),
     padding: u(20),
-    paddingBottom: u(25),
   },
 
   photoModal: {
-    backgroundColor: "#0B1623",
-    borderTopLeftRadius: u(25),
-    borderTopRightRadius: u(25),
-    padding: u(18),
-    paddingBottom: u(25),
-    maxHeight: "90%",
+    width: "100%",
+    maxWidth: u(390),
+    backgroundColor: "#081522",
+    borderWidth: 1,
+    borderColor: "#245074",
+    borderRadius: u(22),
+    padding: u(20),
+    alignItems: "center",
   },
 
   savedBox: {
-    backgroundColor: "#0B1623",
-    borderTopLeftRadius: u(25),
-    borderTopRightRadius: u(25),
+    width: "100%",
+    maxWidth: u(390),
+    maxHeight: "78%",
+    backgroundColor: "#081522",
+    borderWidth: 1,
+    borderColor: "#245074",
+    borderRadius: u(22),
     padding: u(20),
-    paddingBottom: u(25),
-    maxHeight: "80%",
   },
 
   aboutBox: {
-    backgroundColor: "#0B1623",
-    marginHorizontal: u(25),
-    borderRadius: u(25),
+    width: "100%",
+    maxWidth: u(390),
+    backgroundColor: "#081522",
     borderWidth: 1,
-    borderColor: "#244464",
-    padding: u(22),
+    borderColor: "#245074",
+    borderRadius: u(22),
+    padding: u(25),
     alignItems: "center",
   },
 
   modalTitle: {
     color: "#FFFFFF",
-    fontSize: u(23),
+    fontSize: u(22),
     fontWeight: "900",
-    marginBottom: u(15),
+    marginBottom: u(16),
   },
 
   modalButton: {
-    minHeight: u(50),
-    borderRadius: u(15),
-    backgroundColor: "#111F30",
-    borderWidth: 1,
-    borderColor: "#213B58",
+    minHeight: u(52),
     flexDirection: "row",
     alignItems: "center",
-    paddingHorizontal: u(15),
-    marginBottom: u(8),
+    paddingHorizontal: u(14),
+    borderRadius: u(14),
+    backgroundColor: "#0E1F31",
+    borderWidth: 1,
+    borderColor: "#1A3B59",
+    marginBottom: u(9),
   },
 
   modalButtonText: {
-    color: "#F1F6FF",
-    fontSize: u(16),
+    color: "#FFFFFF",
+    fontSize: u(15),
     fontWeight: "700",
-    marginLeft: u(10),
+    marginLeft: u(12),
   },
 
   closeButton: {
     alignItems: "center",
     justifyContent: "center",
-    minHeight: u(44),
-    marginTop: u(5),
+    paddingVertical: u(13),
+    marginTop: u(4),
   },
 
   closeText: {
-    color: "#8EA8D1",
-    fontSize: u(15),
-    fontWeight: "700",
+    color: "#9CB5D8",
+    fontSize: u(16),
+    fontWeight: "800",
   },
 
   photoPreview: {
     width: "100%",
-    height: u(300),
-    borderRadius: u(18),
+    height: u(260),
+    borderRadius: u(15),
+    marginBottom: u(14),
     backgroundColor: "#02070D",
-    marginBottom: u(12),
     resizeMode: "contain",
+  },
+
+  deleteButton: {
+    width: u(42),
+    height: u(42),
+    alignItems: "center",
+    justifyContent: "center",
+    marginLeft: u(8),
   },
 
   savedRow: {
